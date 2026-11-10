@@ -1,4 +1,9 @@
-"""Run from the recipe directory: .venv/bin/python examples/weighted_reward.py"""
+"""Run from the Nemotron checkout with the separate CPU scorer environment.
+
+PYTHONPATH=src .nemotron/parse-scorers/bin/python -m nemotron.recipes.parse.examples.weighted_reward
+
+See src/nemotron/recipes/parse/document_rewards/README.md for environment setup.
+"""
 
 from pprint import pprint
 

@@ -6,7 +6,8 @@
     "Relocated optional document_rewards imports; scientific implementations and hyperparameters otherwise unchanged.",
     "Omitted notebook-only display.py.",
     "Propagated the recipe package path, native sampler setting and current Python executable explicitly into Ray workers; NeMo RL retains its HF modules cache path.",
-    "Updated optional reward documentation for the isolated Nemotron Parse runtime and explicit optional dependencies."
+    "Updated optional reward documentation for the isolated Nemotron Parse runtime and explicit optional dependencies.",
+    "Documented a separate CPU environment for optional scorers and updated the example invocation without changing its implementation."
   ],
   "files": {
     "dental/__init__.py": {
@@ -107,7 +108,7 @@
     "document_rewards/README.md": {
       "source": "recipes/dental_parse/document_rewards/README.md",
       "source_sha256": "99f39a90f2784765c4af1a795d68152481d3fbbd8e8eb6fce6788d01a8e77309",
-      "ported_sha256": "df1913b3190aa71d56a9d1337c33df398c1db5ad18cb0cef08ddf41aa7a94bed"
+      "ported_sha256": "b7103e112f0d1f6f54c711f6efd226b2197c43f98281152342dac8c96223032d"
     },
     "document_rewards/__init__.py": {
       "source": "recipes/dental_parse/document_rewards/__init__.py",
@@ -172,7 +173,7 @@
     "examples/weighted_reward.py": {
       "source": "recipes/dental_parse/examples/weighted_reward.py",
       "source_sha256": "19bbd627712e96f58c009db3fbfbecb706b44d669b874052cee50b0eb48ef749",
-      "ported_sha256": "9ffe357d7b45924ceaf730a9a34ba2b0be00adec4b497559d9eecb121301a6d3"
+      "ported_sha256": "1ab7cba66666dff6e2dd892cb6d5a275cf6595863bddfbeb6bfa038c1c569f1a"
     },
     "stage1_sft/config/automodel.yaml": {
       "source": "recipes/dental_parse/stage1_sft/config.yaml",

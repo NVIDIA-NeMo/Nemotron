@@ -48,13 +48,18 @@ excluded and the result is approximately `0.9059`. `effective_weights` and
 `contributions` explain the total. Weights are example starting points, not a
 production reward recipe. Keep individual metrics visible when changing them.
 
-[The runnable example](../examples/weighted_reward.py) calls all five scorers:
+[The runnable example](../examples/weighted_reward.py) calls all five scorers.
+Create a separate CPU environment for these optional examples, leaving the
+training runtime and its recorded package freeze unchanged:
 
 ```sh
-# From the Nemotron checkout, using the isolated Parse runtime:
-PARSE_RUNTIME=.nemotron/parse-runtime
-PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
-  "$PARSE_RUNTIME/venv/bin/python" -m nemotron.recipes.parse.examples.weighted_reward
+# From the Nemotron checkout, with uv installed:
+PARSE_SCORER_RUNTIME="$PWD/.nemotron/parse-scorers"
+uv --no-config venv --python 3.13 "$PARSE_SCORER_RUNTIME"
+uv --no-config pip install --python "$PARSE_SCORER_RUNTIME/bin/python" \
+  'numpy>=1.26' 'scipy>=1.11'
+PYTHONPATH="$PWD/src" \
+  "$PARSE_SCORER_RUNTIME/bin/python" -m nemotron.recipes.parse.examples.weighted_reward
 ```
 
 To use a mixture in NeMo RL, compute these components inside the environment's
@@ -64,20 +69,16 @@ does not replace the dental environment automatically.
 
 ## Dependencies
 
-Box, table and chart scoring require NumPy and SciPy. Text, completion and
-weighted combination use only the Python standard library. If these optional
-dependencies are absent from the selected runtime, install them explicitly:
+Box, table and chart scoring require NumPy and SciPy, installed by the example
+setup above. Text, completion and weighted combination use only the Python
+standard library. No model or GPU runtime is required for these scorers.
+
+`table_teds` is an optional alternative table metric. Install its extras in the
+same separate scorer environment before calling it:
 
 ```sh
-uv pip install --python "$PARSE_RUNTIME/venv/bin/python" 'numpy>=1.26' 'scipy>=1.11'
-```
-
-`table_teds` is an optional alternative table metric. Install its extras before
-calling it:
-
-```sh
-uv pip install --python "$PARSE_RUNTIME/venv/bin/python" \
-  'numpy>=1.26' 'scipy>=1.11' 'apted>=1.0.3' 'python-Levenshtein>=0.25' 'lxml>=5'
+uv --no-config pip install --python "$PARSE_SCORER_RUNTIME/bin/python" \
+  'apted>=1.0.3' 'python-Levenshtein>=0.25' 'lxml>=5'
 ```
 
 Table metrics score the grid, excluding captions and inline typography; text

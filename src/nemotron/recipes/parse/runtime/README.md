@@ -11,7 +11,8 @@ This v1 requires a source checkout or editable install, including the root
 is rejected: adding its entire host `site-packages` directory to worker
 `PYTHONPATH` could import incompatible launcher dependencies into the runtime.
 
-From the Nemotron checkout on a Linux GPU host:
+From the Nemotron checkout on a Linux GPU host, use Python 3.11 or newer to
+bootstrap the installer. It creates the training environment with Python 3.13.16.
 
 ```bash
 python3 -m pip install uv==0.13.1
@@ -32,10 +33,14 @@ reproductions of automatic selection. Actual package builds are recorded in
 The vLLM wheel uses CUDA 13, so selecting a CUDA 12 Torch build alone does not
 make this environment CUDA 12 compatible.
 
-The default runtime directory is `.nemotron/parse-runtime` in the current
-project, or `NEMOTRON_PARSE_RUNTIME` when set. Sources, the venv, and default uv
-cache/Python downloads live below it; explicit existing cache settings are
-respected. An explicit directory is recommended for cluster jobs. The installer
+The installer's default runtime directory is `.nemotron/parse-runtime` in the
+current project, or `NEMOTRON_PARSE_RUNTIME` when set. Bundled stage profiles
+explicitly use `.nemotron/parse-runtime`; when installing elsewhere, pass
+`runtime_dir=/absolute/runtime/path` to every `nemotron parse` stage command.
+Setting the environment variable alone does not override those stage profiles.
+Sources, the venv, and default uv cache/Python downloads live below the selected
+directory; explicit existing cache settings are respected. An explicit directory
+is recommended for cluster jobs. The installer
 records `requested.json`, `runtime.json` and `environment.txt`. Repeating setup
 with identical inputs verifies the installed packages and patches without
 upgrading them. Changed settings, source edits or package drift require a new

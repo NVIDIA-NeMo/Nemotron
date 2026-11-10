@@ -20,10 +20,10 @@ are examples, not the dental training objective.
 ## Runtime
 
 Use Linux and one H200 with a driver compatible with the selected CUDA runtime.
-The reference workflow passed on H200 with driver 580.126.20, Python 3.13.16,
-Torch 2.14.0+cu132, Transformers 5.16.1 and vLLM 0.33.0. A full reference run
-took approximately 86 minutes. Its sampled GPU-memory peaks were 23.12 GiB
-for SFT and 36.32 GiB for RLVR; these are observations, not minimum requirements.
+The complete CLI workflow passed on H200 with driver 580.126.20, Python 3.13.16,
+Torch 2.14.0+cu132, Transformers 5.16.1 and vLLM 0.33.0. The full run
+took approximately 85 minutes. Its sampled GPU-memory peaks were 23.12 GiB
+for SFT and 37.97 GiB for RLVR; these are observations, not minimum requirements.
 H100/A100 compatibility has not been established by that run.
 
 Parse uses an isolated environment because the main Nemotron environment has
@@ -37,7 +37,8 @@ the resolved package freeze. The successful reference selection combined CUDA
 `cu132` fails because the required torchaudio build is unavailable there.
 The current vLLM wheel requires CUDA 13, so selecting CUDA 12 Torch alone is insufficient.
 
-From the repository root, on a compute host:
+From the repository root, on a compute host with Python 3.11 or newer available
+to bootstrap the installer. The isolated training environment uses Python 3.13.16.
 
 ```bash
 python3 -m pip install uv==0.13.1
@@ -149,10 +150,22 @@ To evaluate a saved checkpoint separately:
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
-Exact quality values vary across runs. The unrefactored reference H200 run
-improved pass@1 from 82.67% to 86.67%, while CER changed from 0.1167% to 0.1418%.
-These are source-workflow observations, not yet results from these entry points.
-Fixed seeds do not establish numerical reproducibility across environments.
+The full default CLI sequence passed on one H200 on November 10, 2026, at
+execution commit `ded106bb163b3332b7b38e7a831d7fef50af5ea6`. Fresh runtime setup,
+data generation, 2,852 SFT updates, 128 RLVR updates and both evaluation paths
+completed in 84 minutes 58 seconds. The standalone evaluation loaded the saved
+RLVR artifact and reported the same aggregate metrics as the matched after-evaluation.
+
+| Workflow | SFT pass@1 | RLVR pass@1 | SFT text CER | RLVR text CER |
+| --- | ---: | ---: | ---: | ---: |
+| Original notebooks | 82.67% | 86.67% | 0.1167% | 0.1418% |
+| Nemotron CLI | 59.03% | 76.76% | 0.1954% | 0.1298% |
+
+Each comparison uses 256 held-out pages and eight sampled answers per page.
+The CLI run improved both metrics within the run, but its absolute pass@1 was
+lower than the notebook result. The cause remains unresolved. Execution success
+does not establish numerical reproduction; fixed seeds alone do not establish it
+either. Preserve the runtime records and report both accuracy and error metrics.
 The baseline preview uses greedy monitoring; it is not a matched base/SFT/RLVR
 benchmark on the held-out set.
 
@@ -167,6 +180,9 @@ retained in their respective directories.
 PYTHONPATH=src python -m pytest tests/recipes/parse
 ```
 
-CPU checks cover reward/EOS behavior, split exclusions, configuration, artifact
-handoff, CLI dispatch and runtime isolation. GPU acceptance must exercise the
-complete default sequence, actual checkpoint reload and matched evaluation.
+All 39 CPU checks passed, covering reward/EOS behavior, split exclusions,
+configuration, artifact handoff, CLI dispatch and runtime isolation. Full H200
+acceptance exercised the default sequence, checkpoint reload and both evaluation
+paths. A separate CPU audit verified unchanged source, framework patches, package
+freeze and base-model bytes; fixed data identity and disjoint contexts; complete
+finite training histories; artifact handoffs; and recomputed answer metrics.
