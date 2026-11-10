@@ -120,8 +120,9 @@ responses per update. Training configurations are in `stage1_sft/config/automode
 and `stage2_rlvr/config/grpo.yaml`.
 
 Each stage writes `config.json`, `stage.json` and an explicit `artifact.json`
-handoff. Nemotron Artifact metadata is saved alongside the dataset/checkpoint or
-evaluation output. Training also writes `training-config.json`, `schedule.json`,
+handoff. Nemotron Artifact metadata is saved in the stage output bundle, with
+`payload_path` pointing to the dataset, checkpoint or evaluation output. Checkpoint
+contents remain unchanged by artifact publication. Training also writes `training-config.json`, `schedule.json`,
 `history.jsonl`, predictions and checkpoints. RLVR retains every sampled answer
 under `mining/`, `before/` and `after/`, plus `evaluation.json`. No external
 tracking service is required.

@@ -54,10 +54,11 @@ def stage_run(stage, output, config):
 def artifact(output: Path, kind: str, path: Path, **metadata) -> Path:
     from nemotron.kit.artifacts.base import Artifact
 
-    # Use Nemotron's local metadata format as well as the explicit stage handoff.
+    # Keep bookkeeping in the stage bundle. Adding metadata to an evaluated
+    # checkpoint would change its evaluation identity after the answers are saved.
     # No remote registry or tracking backend is initialized by this recipe.
-    Artifact(path=path.absolute(), type=kind,
-             metadata=dict(source_revision=SOURCE_REVISION, **metadata)).save()
+    Artifact(path=output.absolute(), type=kind,
+             metadata=dict(source_revision=SOURCE_REVISION, payload_path=str(path.absolute()), **metadata)).save()
     target = output / "artifact.json"
     write_json(target, dict(schema_version=1, kind=kind, path=str(path.absolute()),
                             source_revision=SOURCE_REVISION, **metadata))
