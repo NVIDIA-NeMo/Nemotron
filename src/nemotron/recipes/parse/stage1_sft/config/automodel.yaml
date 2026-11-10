@@ -1,0 +1,87 @@
+# Supervised fine-tuning of complete dental pages.
+recipe: FinetuneRecipeForVLM
+seed: 42
+step_scheduler:
+  global_batch_size: 1
+  local_batch_size: 1
+  num_epochs: 12
+  max_steps: 2852
+  ckpt_every_steps: 512
+  save_checkpoint_every_epoch: false
+  val_every_steps: 512
+  log_remote_every_steps: 1
+dist_env:
+  backend: nccl
+  timeout_minutes: 10
+model:
+  _target_: nemo_automodel.NeMoAutoModelForImageTextToText.from_pretrained
+  pretrained_model_name_or_path: ${model_path}
+  torch_dtype: torch.float32
+  force_hf: true
+  trust_remote_code: true
+  use_liger_kernel: false
+  use_sdpa_patching: false
+  attn_implementation: sdpa
+processor:
+  _target_: transformers.AutoProcessor.from_pretrained
+  pretrained_model_name_or_path: ${model_path}
+  trust_remote_code: true
+distributed:
+  strategy: fsdp2
+  tp_size: 1
+  cp_size: 1
+  sequence_parallel: false
+  activation_checkpointing: false
+  mp_policy:
+    _target_: torch.distributed.fsdp.MixedPrecisionPolicy
+    param_dtype: bfloat16
+    reduce_dtype: float32
+    output_dtype: bfloat16
+    cast_forward_inputs: true
+freeze_config:
+  freeze_embeddings: false
+  freeze_vision_tower: false
+  freeze_language_model: false
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+dataset:
+  _target_: nemotron.recipes.parse.dental.sft_data.make_dataset
+  path: ${data_dir}/train.jsonl
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  pin_memory: true
+  shuffle: true
+  collate_fn:
+    _target_: nemotron.recipes.parse.dental.sft_data.collate
+    max_length: 4096
+validation_dataset:
+  _target_: nemotron.recipes.parse.dental.sft_data.make_dataset
+  path: ${data_dir}/monitor.jsonl
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  pin_memory: true
+  shuffle: false
+  collate_fn:
+    _target_: nemotron.recipes.parse.dental.sft_data.collate
+    max_length: 4096
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 3.0e-06
+  weight_decay: 0.0
+  foreach: true
+lr_scheduler:
+  lr_warmup_steps: 0
+  lr_decay_steps: 2852
+  lr_decay_style: cosine
+  init_lr: 3.0e-06
+  max_lr: 3.0e-06
+  min_lr: 3.0e-07
+checkpoint:
+  enabled: true
+  checkpoint_dir: ${output_dir}/checkpoints
+  model_save_format: safetensors
+  save_consolidated: every
+  is_async: false
+wandb: null

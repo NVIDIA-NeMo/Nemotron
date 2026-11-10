@@ -1,0 +1,20 @@
+Document reward baselines
+
+Chart parsing, associated fact extraction, Unicode normalization and numeric
+assignment are extracted from the Nemotron Parse RLVR helpers. The public
+functions compose these primitives into independent baselines; they do not
+reproduce the complete production reward configuration.
+
+_grits.py adapts the GriTS reference implementation from Microsoft Table
+Transformer and the ParseBench vendored implementation.
+Copyright (C) 2021 Microsoft Corporation.
+License: MIT; see licenses/GriTS-MIT.txt.
+https://github.com/microsoft/table-transformer
+Smock, Pesala, Abraham, "GriTS: Grid Table Similarity Metric for Table Structure
+Recognition", ICDAR 2023, https://arxiv.org/abs/2203.12555.
+
+_teds.py contains the single-table TEDS implementation from PubTabNet.
+Copyright 2020 IBM. Licensed under Apache-2.0;
+see licenses/TEDS-Apache-2.0.txt and the retained source notice.
+The unused batch-evaluation method was removed.
+https://github.com/ibm-aur-nlp/PubTabNet/blob/master/src/metric.py

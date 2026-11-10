@@ -242,6 +242,7 @@ Nemotron-native recipe families can be tracked through
 | [Ultra3](nemotron/ultra3/README.md) | Pretraining → SFT → RLVR → MOPD |
 | [Embed](nemotron/embed/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
 | [Rerank](nemotron/rerank/index.md) | SDG → Data Prep → Finetune → Eval → Export (Llama profile only) → Deploy |
+| [Parse](nemotron/parse/index.md) | Dental SDG → SFT → RLVR with matched evaluation |
 
 ### Externally maintained workflow maps
 
@@ -407,6 +408,7 @@ Nemotron 3.5 Transcribe <nemotron/transcribe35/README.md>
 Nemotron 3 Ultra <nemotron/ultra3/README.md>
 Nemotron Embed <nemotron/embed/index.md>
 Nemotron Rerank <nemotron/rerank/index.md>
+Nemotron Parse <nemotron/parse/index.md>
 nemotron/artifacts.md
 ```
 

@@ -1,0 +1,10 @@
+# Execution smoke profile only; not comparable to the reference quality results.
+output_dir: .nemotron/parse/sft-tiny
+training:
+  step_scheduler:
+    num_epochs: 1
+    max_steps: 2
+    ckpt_every_steps: 1
+    val_every_steps: 2
+  lr_scheduler:
+    lr_decay_steps: 2

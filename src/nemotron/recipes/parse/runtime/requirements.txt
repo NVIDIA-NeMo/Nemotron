@@ -1,0 +1,15 @@
+# Shared packages for data generation, Automodel SFT and NeMo RL GRPO.
+vllm==0.33.0
+torch==2.14.0
+torchvision==0.29.0
+torchao==0.18.0
+transformers==5.16.1
+Pillow>=13
+ray[default]>=2.60,<3
+setuptools<81
+nemo-lens @ git+https://github.com/NVIDIA-NeMo/Lens.git@4d045c03186b90afdc815db46b671f6a21bc7e98
+jupyterlab>=4.6,<5
+ipykernel
+matplotlib>=3.9
+ipython>=8
+omegaconf>=2.3
