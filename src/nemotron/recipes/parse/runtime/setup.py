@@ -1,7 +1,7 @@
 """Install the isolated Parse runtime with the validated upstream framework patches.
 
-Run on a Linux compute host (inside a scheduler allocation on clusters):
-    python -m nemotron.recipes.parse.runtime.setup --runtime-dir /project/parse-runtime
+Run from the Nemotron source checkout on Linux:
+    PYTHONPATH=src python3 -m nemotron.recipes.parse.runtime.setup --runtime-dir .nemotron/parse-runtime
 
 This command does not install the root Nemotron project or change its environment.
 """

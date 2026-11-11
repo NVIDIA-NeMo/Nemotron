@@ -16,7 +16,6 @@ The [domain adaptation guide](https://github.com/NVIDIA-NeMo/Nemotron/blob/main/
 identifies the example components to adapt. The executable v1 defaults include
 dental generation, monitoring, rewards and evaluation; another domain requires
 corresponding data and task code changes.
-On a cluster, execute those commands inside a Slurm allocation.
 
 The complete dental example has been validated on one H200. Additional domain
 examples, configurable task interfaces and other GPU profiles remain future

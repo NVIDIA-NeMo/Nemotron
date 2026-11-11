@@ -55,7 +55,7 @@ def runtime_environment(
 
     Host PYTHONPATH and user-site packages must not reintroduce the launcher's
     incompatible Transformers/Torch installations. Other task-specific settings,
-    including existing model/cache locations and node-local TMPDIR, are retained.
+    including existing model/cache locations and TMPDIR, are retained.
     """
     root = Path(runtime_dir).expanduser().resolve() if runtime_dir is not None else default_runtime_dir()
     src = checkout_source_root(source_root)

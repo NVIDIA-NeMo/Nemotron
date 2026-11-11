@@ -32,7 +32,7 @@ def metadata(stage: str) -> RecipeMeta:
 def execute(stage: str, ctx: typer.Context) -> None:
     request = parse_recipe_config(ctx)
     if request.mode != "local" or request.stage:
-        raise typer.BadParameter("Parse v1 runs locally; on a cluster invoke it inside a Slurm allocation.")
+        raise typer.BadParameter("Parse v1 runs commands directly; --run, --batch and --stage are not supported.")
     if request.passthrough:
         raise typer.BadParameter(f"Unrecognized arguments: {' '.join(request.passthrough)}")
     config = load_config(stage, request.config, request.dotlist)

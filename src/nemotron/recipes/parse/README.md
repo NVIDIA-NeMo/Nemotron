@@ -29,55 +29,21 @@ provide building blocks for your domain's evaluation and reward functions.
 
 ## Runtime
 
-Use Linux and one H200 with a driver compatible with the selected CUDA runtime.
-The complete CLI workflow passed on H200 with driver 580.126.20, Python 3.13.16,
-Torch 2.14.0+cu132, Transformers 5.16.1 and vLLM 0.33.0. The full run
-took approximately 85 minutes. Its sampled GPU-memory peaks were 23.12 GiB
-for SFT and 37.97 GiB for RLVR; these are observations, not minimum requirements.
-H100/A100 compatibility has not been established by that run.
-
-Parse uses an isolated environment because the main Nemotron environment has
-different Torch/Transformers requirements. The installer resolves the complete
-dependency set, checks it, applies bundled patches to pinned NeMo Automodel and
-NeMo RL sources, and records the resolved packages. It does not modify the
-main Nemotron environment. The installer defaults to `--torch-backend auto`,
-matching the reference installer. Run it with the target GPU visible and retain
-the resolved package freeze. The successful reference selection combined CUDA
-13.2 Torch/torchvision/torchao with CPU torchaudio; forcing all packages to
-`cu132` fails because the required torchaudio build is unavailable there.
-The current vLLM wheel requires CUDA 13, so selecting CUDA 12 Torch alone is insufficient.
-
-From the repository root, on a compute host with Python 3.11 or newer available
-to bootstrap the installer. The isolated training environment uses Python 3.13.16.
-
-```bash
-python3 -m pip install uv==0.13.1
-export PYTHONPATH="$PWD/src"
-PARSE_RUNTIME="$PWD/.nemotron/parse-runtime"
-python3 -m nemotron.recipes.parse.runtime.setup --runtime-dir "$PARSE_RUNTIME"
-```
-
-On a Slurm cluster, run installation and all stages inside an allocation.
-The observed full run allocated one H200, eight CPUs and 128 GiB host memory.
-Use a short node-local `TMPDIR`/`RAY_TMPDIR` when the project path would exceed
-Ray's Unix-socket path limit. A system CUDA compiler is not needed for sampling:
-the recipe supplies `VLLM_USE_FLASHINFER_SAMPLER=0` to stage and Ray processes.
-
-`$PARSE_RUNTIME/runtime.json` and `$PARSE_RUNTIME/environment.txt` record the
-installation. Reusing that directory verifies its configuration and package
-freeze; changed inputs require a new runtime directory. Broad dependency ranges
-still allow different fresh resolutions, so retain these records with results.
+Use the dedicated Parse runtime to keep training and evaluation dependencies
+separate from the main Nemotron environment. Follow the
+[runtime setup guide](runtime/README.md) to install it from a Nemotron source
+checkout on Linux with your GPU visible, then run the commands below.
 
 ## Run the dental worked example
 
-The commands below run the included example with its validated data and scoring
-defaults. The runtime includes the lightweight source CLI. These commands use
-the same `nemotron parse` command implementation as an installed Nemotron CLI, without
-installing conflicting root dependencies into the training environment.
+After completing runtime setup, run these commands from the repository root.
+They execute the dental example with its default data and scoring.
 
 ```bash
-PARSE_RUN="$PWD/.nemotron/parse"
+export PYTHONPATH="$PWD/src"
+PARSE_RUNTIME="$PWD/.nemotron/parse-runtime"
 PARSE_PYTHON="$PARSE_RUNTIME/venv/bin/python"
+PARSE_RUN="$PWD/.nemotron/parse"
 
 "$PARSE_PYTHON" -m nemotron parse data \
   runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data"
@@ -92,11 +58,9 @@ PARSE_PYTHON="$PARSE_RUNTIME/venv/bin/python"
 ```
 
 An editable Nemotron installation from this source checkout can use
-`nemotron parse ...` with the same arguments. A standalone wheel installation
-is not supported by this v1 launcher: adding its host `site-packages` directory
-to the worker path would defeat dependency isolation. Every command launches a separate runtime process, releasing GPU
-resources between stages. Native NeMo-Run `--run`/`--batch` submission is not
-part of this v1; submit the local commands through your cluster scheduler.
+`nemotron parse ...` with the same arguments. Each command runs directly in a
+separate runtime process and releases GPU resources when it exits. The v1
+commands do not support the NeMo-Run `--run` or `--batch` options.
 
 Default SFT downloads the pinned base-model revision
 `62cb1e4ba153d113ff64aaf2be6e068c377cf53c`. Supply `model=/absolute/checkpoint`
@@ -238,11 +202,9 @@ To evaluate a saved checkpoint separately:
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
-The full dental example CLI sequence passed on one H200 on November 10, 2026, at
-execution commit `ded106bb163b3332b7b38e7a831d7fef50af5ea6`. Fresh runtime setup,
-data generation, 2,852 SFT updates, 128 RLVR updates and both evaluation paths
-completed in 84 minutes 58 seconds. The standalone evaluation loaded the saved
-RLVR artifact and reported the same aggregate metrics as the matched after-evaluation.
+The complete dental example was validated on one H200, including SFT, RLVR and
+evaluation of the saved checkpoint. Standalone evaluation produced the same
+results as evaluation within the RLVR stage.
 
 | Workflow | SFT pass@1 | RLVR pass@1 | SFT text CER | RLVR text CER |
 | --- | ---: | ---: | ---: | ---: |
@@ -270,9 +232,7 @@ retained in their respective directories.
 PYTHONPATH=src python -m pytest tests/recipes/parse
 ```
 
-All 39 CPU checks passed, covering reward/EOS behavior, split exclusions,
-configuration, artifact handoff, CLI dispatch and runtime isolation. Full H200
-acceptance exercised the default sequence, checkpoint reload and both evaluation
-paths. A separate CPU audit verified unchanged source, framework patches, package
-freeze and base-model bytes; fixed data identity and disjoint contexts; complete
-finite training histories; artifact handoffs; and recomputed answer metrics.
+The CPU tests cover reward/EOS behavior, split exclusions, configuration,
+artifact handoff, CLI dispatch and runtime isolation. The dental example's
+end-to-end validation also checked checkpoint reload, dataset identity,
+training histories and recomputed evaluation metrics.
