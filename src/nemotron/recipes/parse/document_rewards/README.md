@@ -1,14 +1,18 @@
-# Optional document rewards
+# Document evaluation and reward building blocks
 
-These independent baselines cover transcription, layout, tables, charts and
+Use these optional scorers when adapting the Parse recipe's evaluation and
+RLVR reward to your document domain. These independent baselines cover
+transcription, layout, tables, charts and
 completion quality. Each returns a dictionary containing `score` in `[0, 1]`
 and component measurements. A reference of `None` means that component is not
 annotated/applicable; its score is `None`. Invalid generated structures score
 zero. Invalid reference tables/charts raise an error so they can be corrected.
 
-The dental recipe uses its exact-page reward. These functions are options for
-other document tasks; their weighting is independent of reported exact-match
-accuracy.
+The included dental example uses its exact-page content reward. These functions
+are building blocks for other task definitions; their weighting is independent
+of reported exact-match accuracy. See the
+[domain adaptation guide](../README.md#adapt-the-example-to-your-domain) for the
+data, monitoring, reward and evaluation components to customize.
 
 | Function | Input | Scalar and measurements |
 |---|---|---|
@@ -23,6 +27,22 @@ serialization. The normalizer handles Parse coordinate/decoder tokens and basic
 presentation markup. Supply rich tables and charts to their respective scorers.
 Box detection expects annotated empty lists for genuinely empty pages; use
 `None` when layout was not annotated.
+
+## Connect scorers to your task
+
+Define the reference components available for your documents, then extract and
+match the corresponding components from the generated Parse output. For example,
+table scoring expects an individual HTML/Markdown table or grid, and box scoring
+expects boxes in the same coordinate units. Missing annotations and annotated
+empty content have different meanings; preserve that distinction.
+
+Adapt the example's [evaluation metrics](../dental/metrics.py),
+[saved-answer scoring](../dental/evaluate.py) and
+[summary fields](../common.py) to report your chosen components. To use them
+for RLVR, also adapt the [reward environment](../dental/environment.py) and its
+reference metadata. The CLI has no switch that automatically replaces these
+dental implementations with the scorers below. Validate your evaluation first,
+then evaluate any reward mixture under the same held-out protocol.
 
 ## Combine the scores
 

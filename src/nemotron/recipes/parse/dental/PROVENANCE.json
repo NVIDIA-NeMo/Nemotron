@@ -7,7 +7,8 @@
     "Omitted notebook-only display.py.",
     "Propagated the recipe package path, native sampler setting and current Python executable explicitly into Ray workers; NeMo RL retains its HF modules cache path.",
     "Updated optional reward documentation for the isolated Nemotron Parse runtime and explicit optional dependencies.",
-    "Documented a separate CPU environment for optional scorers and updated the example invocation without changing its implementation."
+    "Documented a separate CPU environment for optional scorers and updated the example invocation without changing its implementation.",
+    "Reframed optional scorer documentation as building blocks for Parse domain adaptation and evaluation; scoring implementations are unchanged."
   ],
   "files": {
     "dental/__init__.py": {
@@ -108,7 +109,7 @@
     "document_rewards/README.md": {
       "source": "recipes/dental_parse/document_rewards/README.md",
       "source_sha256": "99f39a90f2784765c4af1a795d68152481d3fbbd8e8eb6fce6788d01a8e77309",
-      "ported_sha256": "b7103e112f0d1f6f54c711f6efd226b2197c43f98281152342dac8c96223032d"
+      "ported_sha256": "2100c5cd03ec504826d64e6b21b57cd6b55e8cf891c6a1e43ffb1de89ec40ccc"
     },
     "document_rewards/__init__.py": {
       "source": "recipes/dental_parse/document_rewards/__init__.py",

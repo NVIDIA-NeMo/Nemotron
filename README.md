@@ -186,6 +186,7 @@ Nemotron 3.5 Transcribe follows this pattern with NeMo Speech.
 | **[Nemotron 3 Nano Omni](docs/nemotron/omni3/README.md)** | 30B total / 3B active hybrid Mamba-Transformer MoE — native text, image, video, and audio for agentic multimodal perception | SFT → RL (MPO / text / vision) → Eval | [Training Guide](docs/nemotron/omni3/README.md) |
 | **[Nemotron Embed](docs/nemotron/embed/index.md)** | Fine-tune text and multimodal embedding models for domain-specific retrieval | SDG → Data Prep → Finetune → Eval → Export (Llama only) → Deploy | [Training Guide](docs/nemotron/embed/index.md) |
 | **[Nemotron Rerank](docs/nemotron/rerank/index.md)** | Fine-tune text and multimodal rerankers to score and reorder retrieved documents | SDG → Data Prep → Finetune → Eval → Export (Llama only) → Deploy | [Training Guide](docs/nemotron/rerank/index.md) |
+| **[Nemotron 3.5 Parse](docs/nemotron/parse/index.md)** | Adapt Parse for document extraction with SFT, RLVR and evaluation, using dental data preparation as a worked example | Data Prep (dental example) → SFT → RLVR → Eval | [Adaptation Guide](src/nemotron/recipes/parse/README.md#adapt-the-example-to-your-domain) |
 
 ### Nemotron 3 Ultra
 

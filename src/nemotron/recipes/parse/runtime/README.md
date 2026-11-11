@@ -1,4 +1,10 @@
-# Parse training runtime
+# Parse adaptation and evaluation runtime
+
+This runtime supports the Parse recipe's data preparation, SFT, RLVR and
+evaluation stages. The bundled H200 validation uses the dental worked example;
+reuse the runtime when [adapting the example to your domain](../README.md#adapt-the-example-to-your-domain).
+Domain data and scoring are defined by the example components described in
+that guide, separately from model/runtime setup.
 
 The Parse recipe uses an isolated environment because its validated Torch and
 Transformers versions differ from the root Nemotron launcher dependencies.

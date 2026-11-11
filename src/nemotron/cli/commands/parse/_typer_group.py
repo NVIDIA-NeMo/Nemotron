@@ -3,7 +3,7 @@
 from nemo_runspec.recipe_typer import RecipeTyper
 from nemotron.cli.commands.parse.commands import data, evaluate, metadata, rlvr, sft
 
-parse_app = RecipeTyper(name="parse", help="Dental document SDG, SFT and RLVR for Nemotron Parse",
+parse_app = RecipeTyper(name="parse", help="Parse model adaptation and evaluation; dental data preparation example",
                         no_args_is_help=True)
 for name, command, panel in (("data", data, "Data"), ("sft", sft, "Training"),
                               ("rlvr", rlvr, "Training"), ("eval", evaluate, "Evaluation")):
