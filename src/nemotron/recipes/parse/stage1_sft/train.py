@@ -14,7 +14,7 @@
 # gpus_per_node = 1
 # ///
 
-"""Run the reference SFT schedule with terminal progress and explicit artifacts."""
+"""Run SFT with terminal progress and explicit artifacts."""
 
 import time
 
@@ -40,7 +40,7 @@ def main(cfg: SFTConfig | None = None):
         write_json(output / "training-config.json", config)
         observer = Progress(output, "sft")
         trainer = make_trainer(config, observer=observer)
-        # Preserve the notebook's baseline validation and pre-training collate call.
+        # Evaluate the initial model and validate a training batch before optimization.
         trainer.log_val_metrics(trainer._run_validation_epoch(trainer.val_dataloader))
         batch = collate(load_pages(cfg.data_dir / "train.jsonl")[:1], trainer.processor)
         print("Supervised tokens:", int((batch["labels"][0] != -100).sum()), flush=True)

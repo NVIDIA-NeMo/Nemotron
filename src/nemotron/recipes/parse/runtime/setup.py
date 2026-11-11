@@ -21,10 +21,11 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
+from nemotron.recipes.parse import RECIPE_VERSION
+
 from .launch import default_runtime_dir, runtime_environment
 
 RUNTIME = Path(__file__).resolve().parent
-UPSTREAM_REVISION = "2c2be873c05d904de38c80e55ef5ac754aea180d"
 SOURCES = (
     ("nemo-rl", "https://github.com/NVIDIA-NeMo/RL.git", "b0b7dd5597c4bc5c9a728d6d31e2058c698b7423"),
     ("automodel", "https://github.com/NVIDIA-NeMo/Automodel.git", "b916107a5ce8e77a3f18682f8b0eaa46a4b54389"),
@@ -107,7 +108,7 @@ def install_request(torch_backend: str, python_version: str) -> dict:
     ]
     return {
         "schema": 1,
-        "upstream_revision": UPSTREAM_REVISION,
+        "recipe_version": RECIPE_VERSION,
         "torch_backend": torch_backend,
         "python_version": python_version,
         "input_sha256": {name: sha256(RUNTIME / name) for name in files},

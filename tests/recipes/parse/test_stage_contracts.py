@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from nemotron.recipes.parse import common
+from nemotron.recipes.parse import RECIPE_VERSION, common
 from nemotron.recipes.parse.config import DataConfig, EvalConfig, RLVRConfig, SFTConfig
 from nemotron.recipes.parse.dental import config as dental_config
 from nemotron.recipes.parse.dental import data, evaluate, model, rlvr
@@ -56,6 +56,8 @@ def test_stage_failure_is_recorded_and_cannot_silently_replay(tmp_path):
     receipt = json.loads((cfg.data_dir / "stage.json").read_text())
     assert receipt["status"] == "failed"
     assert receipt["error"] == "RuntimeError"
+    assert receipt["recipe_version"] == RECIPE_VERSION
+    assert "source_revision" not in receipt
     with pytest.raises(FileExistsError, match="empty output"):
         with common.stage_run("data", cfg.data_dir, cfg):
             pytest.fail("Failed outputs must not be replayed")
@@ -267,3 +269,4 @@ def test_standalone_eval_publishes_directory_artifact_with_model_processor(datas
     assert summary["pages"] == 1 and summary["answers"] == 8
     assert summary["metrics"]["ended"] == 1.0
     assert receipt["status"] == "completed"
+    assert receipt["recipe_version"] == handoff["recipe_version"] == RECIPE_VERSION

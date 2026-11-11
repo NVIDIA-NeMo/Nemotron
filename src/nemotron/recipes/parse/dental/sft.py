@@ -62,7 +62,7 @@ def make_trainer(config, observer):
 
     class DentalSFT(FinetuneRecipeForVLM):
         def _make_progress_bar(self, total=None, initial=0):
-            return None  # The notebook observer supplies step and epoch bars.
+            return None  # The stage observer reports training progress.
 
         def _publish(self, sample, phase):
             step = 0 if self.baseline else int(sample.step) + 1

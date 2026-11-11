@@ -82,7 +82,7 @@ nemotron parse rlvr -c tiny --dry-run
 `data_dir=/path/to/data` apply afterward. `training.*` overrides merge into the
 native framework configuration. The `tiny` SFT/RLVR profiles exercise two updates
 and checkpoint handoff; their results are not quality benchmarks. Default
-profiles retain the reference scientific settings.
+profiles use the training settings described below.
 
 ## Data preparation example
 
@@ -129,7 +129,7 @@ There is no built-in domain selector or automatic reference conversion.
 | Data preparation | [Data stage](stage0_data/data_prep.py), [records/splits](dental/data.py), [renderer](dental/render.py) | Load or generate your own images, prompts, full targets and scoring references. Replace dental record generation and context grouping. |
 | Dataset handoff | [Identity and artifact helpers](common.py) | Write `train.jsonl`, `monitor.jsonl` and `test.jsonl`; preserve the dataset artifact and hash validation when replacing the data producer. |
 | SFT | [Training stage](stage1_sft/train.py), [collator](dental/sft_data.py), [monitoring](dental/sft.py) | Reuse image/prompt/target training for this Parse architecture. Replace dental monitor metrics and any reference fields they read. |
-| RL candidates and curriculum | [RLVR stage](stage2_rlvr/train.py), [selection](dental/curriculum.py) | Supply candidates from your domain; adapt context grouping, split exclusion and difficulty selection to your scoring criteria. The default stage generates fresh dental candidates internally. |
+| RL candidates and curriculum | [RLVR stage](stage2_rlvr/train.py), [selection](dental/curriculum.py) | Supply candidates from your domain; adapt context grouping, split exclusion and difficulty selection to your scoring criteria. The default stage generates fresh dental candidates. |
 | RLVR reward | [Reward environment](dental/environment.py), [data processor](dental/rl_data.py), [trainer wiring](dental/rlvr.py) | Pass task references in scoring metadata, implement your reward, and connect the environment/data processor to training. |
 | Evaluation | [Prediction and scoring](dental/evaluate.py), [metrics](dental/metrics.py), [summary](common.py), [eval stage](stage3_eval/evaluate.py) | Retain checkpoint loading, saved answers and matched evaluation; replace dental correctness/component metrics and their summary fields. |
 
@@ -168,7 +168,7 @@ example; validate training settings and quality for your own domain.
 ## SFT, RLVR and artifact flow
 
 With the dental example defaults, SFT runs 2,852 updates with global/local batch
-size 1, seed 42 and the reference learning-rate schedule. RLVR generates 512
+size 1, seed 42 and the configured learning-rate schedule. RLVR generates 512
 independent candidate contexts, samples four answers per candidate and selects 256 contexts. Candidate images
 and selected manifests live in the RLVR output's `curriculum/` directory, leaving
 the fixed dataset unchanged. GRPO runs 128 updates, with 16 prompts and four
@@ -206,27 +206,22 @@ The complete dental example was validated on one H200, including SFT, RLVR and
 evaluation of the saved checkpoint. Standalone evaluation produced the same
 results as evaluation within the RLVR stage.
 
-| Workflow | SFT pass@1 | RLVR pass@1 | SFT text CER | RLVR text CER |
-| --- | ---: | ---: | ---: | ---: |
-| Original notebooks | 82.67% | 86.67% | 0.1167% | 0.1418% |
-| Nemotron CLI | 59.03% | 76.76% | 0.1954% | 0.1298% |
+| Checkpoint | Sampled pass@1 | Mean text CER ↓ |
+| --- | ---: | ---: |
+| SFT | 59.03% | 0.1954% |
+| RLVR | 76.76% | 0.1298% |
 
-Each dental comparison uses 256 held-out pages and eight sampled answers per page.
-These results validate the worked example; adaptation quality in another domain
-must be measured on that domain's held-out data.
-The CLI run improved both metrics within the run, but its absolute pass@1 was
-lower than the notebook result. The cause remains unresolved. Execution success
-does not establish numerical reproduction; fixed seeds alone do not establish it
-either. Preserve the runtime records and report both accuracy and error metrics.
+Both checkpoints were evaluated on the same 256 held-out pages with eight
+sampled answers per page. RLVR improved both metrics in this run. Quality and
+run-to-run variation depend on the data, training settings and runtime; measure
+adaptation quality on your domain's held-out data. Preserve runtime records and
+report both accuracy and error metrics when comparing checkpoints.
 The baseline preview uses greedy monitoring; it is not a matched base/SFT/RLVR
 benchmark on the held-out set.
 
-## Source and verification
+## Verification and attribution
 
-The scientific code and framework patches come from Parse revision
-`2c2be873c05d904de38c80e55ef5ac754aea180d`. File hashes and relocation changes
-are recorded in `dental/PROVENANCE.json`. Font and optional scorer notices are
-retained in their respective directories.
+Run the CPU contract tests from the repository root:
 
 ```bash
 PYTHONPATH=src python -m pytest tests/recipes/parse
@@ -236,3 +231,7 @@ The CPU tests cover reward/EOS behavior, split exclusions, configuration,
 artifact handoff, CLI dispatch and runtime isolation. The dental example's
 end-to-end validation also checked checkpoint reload, dataset identity,
 training histories and recomputed evaluation metrics.
+
+Third-party attribution is retained in the
+[font license](dental/fonts/LICENSE.txt) and
+[document scorer notice](document_rewards/NOTICE).

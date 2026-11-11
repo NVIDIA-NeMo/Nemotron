@@ -1,4 +1,4 @@
-"""Schema-aware plot/chart baselines using the training parser and fact keys."""
+"""Chart scoring with canonical structure and associated numeric/categorical facts."""
 
 from collections import Counter
 import math
@@ -32,10 +32,9 @@ def chart_quality(prediction, reference, *, relative_tolerance=0.05,
                   absolute_tolerance=1e-8, metadata_weight=0.1):
     """Score canonical <chart type="..."> targets, not dental odontograms.
 
-    Reuses the training schema parser and series/category/axis/unit fact keys.
-    Numeric matches use the training one-to-one tolerance matcher. Metadata
-    scales factual credit and cannot make an incorrect fact set perfect.
-    This is a baseline, not the full production reward's aggregation policy.
+    Preserves series/category/axis/unit associations during fact matching.
+    Numeric matches use one-to-one assignment with configurable tolerances.
+    Metadata scales factual credit and cannot make an incorrect fact set perfect.
     """
     if reference is None:
         return {"score": None}

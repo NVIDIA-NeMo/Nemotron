@@ -14,7 +14,7 @@
 # gpus_per_node = 1
 # ///
 
-"""Run the reference RLVR notebook as an isolated, configurable recipe stage."""
+"""Mine candidates, train with RLVR and evaluate the resulting checkpoint."""
 
 import json
 from pathlib import Path

@@ -10,10 +10,10 @@ BASE_REVISION = "62cb1e4ba153d113ff64aaf2be6e068c377cf53c"
 
 
 def sft_checkpoint(output):
-    """Find the latest completed SFT checkpoint for the next notebook."""
+    """Find the latest completed SFT checkpoint for downstream stages."""
     checkpoints = list((Path(output) / "checkpoints").glob("epoch_*_step_*/model/consolidated"))
     if not checkpoints:
-        raise FileNotFoundError("Complete the SFT notebook before starting RLVR")
+        raise FileNotFoundError("Run the SFT stage before starting RLVR")
     return max(checkpoints, key=lambda path: int(path.parents[1].name.rsplit("_", 1)[1]))
 
 

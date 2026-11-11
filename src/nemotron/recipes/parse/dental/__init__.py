@@ -1,1 +1,1 @@
-"""Helpers shared by the three dental Parse notebooks."""
+"""Data preparation, training helpers and metrics for the dental example."""

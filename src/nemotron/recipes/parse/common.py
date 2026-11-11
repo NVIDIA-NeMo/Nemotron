@@ -9,7 +9,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-from nemotron.recipes.parse import SOURCE_REVISION
+from nemotron.recipes.parse import RECIPE_VERSION
 
 
 def write_json(path: Path, value: object) -> None:
@@ -37,7 +37,7 @@ def stage_run(stage, output, config):
     with (output / ".started").open("x") as stream:
         stream.write(f"{os.getpid()}\n")
     started = time.time()
-    receipt = dict(stage=stage, status="running", started=started, source_revision=SOURCE_REVISION)
+    receipt = dict(stage=stage, status="running", started=started, recipe_version=RECIPE_VERSION)
     write_json(output / "config.json", config.model_dump(mode="json"))
     write_json(output / "stage.json", receipt)
     try:
@@ -58,10 +58,10 @@ def artifact(output: Path, kind: str, path: Path, **metadata) -> Path:
     # checkpoint would change its evaluation identity after the answers are saved.
     # No remote registry or tracking backend is initialized by this recipe.
     Artifact(path=output.absolute(), type=kind,
-             metadata=dict(source_revision=SOURCE_REVISION, payload_path=str(path.absolute()), **metadata)).save()
+             metadata=dict(recipe_version=RECIPE_VERSION, payload_path=str(path.absolute()), **metadata)).save()
     target = output / "artifact.json"
     write_json(target, dict(schema_version=1, kind=kind, path=str(path.absolute()),
-                            source_revision=SOURCE_REVISION, **metadata))
+                            recipe_version=RECIPE_VERSION, **metadata))
     return target
 
 
@@ -109,7 +109,7 @@ def validate_dataset(directory: Path) -> dict:
 
 
 class Progress:
-    """Preserve the notebook's JSONL metric records without its display dependency."""
+    """Write JSONL metric histories and report stage progress in the terminal."""
 
     def __init__(self, output: Path, stage: str):
         self.output, self.stage = output, stage

@@ -1,4 +1,4 @@
-# Execution smoke profile only; not comparable to the reference quality results.
+# Execution smoke profile only; not intended for quality comparisons.
 output_dir: .nemotron/parse/rlvr-tiny
 sft_output: .nemotron/parse/sft-tiny
 candidate_contexts: 16

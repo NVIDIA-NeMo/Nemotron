@@ -110,10 +110,10 @@ Large tables can be expensive. `max_cells` bounds table-grid expansion (default
 10,000 cells); exceeding it fails a prediction or raises for a reference. It
 does not substitute an approximate GriTS score.
 
-Chart scoring reuses the training chart parser, fact keys and numeric matcher.
-It is a conservative baseline, not the full production chart reward: it does
-not perform production scope/orientation recovery, table record matching or
-version-specific reward routing. Consistent scope declarations are expected.
+Chart scoring compares values and their factual associations in canonical Parse
+chart markup. Inputs must provide consistent scope declarations and explicit
+associations between values, series, categories and axes. Convert other chart
+representations into that form before scoring them.
 
 ## Completion and loop control
 

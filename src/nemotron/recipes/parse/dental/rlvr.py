@@ -1,4 +1,4 @@
-"""Run NeMo RL GRPO with notebook progress and component metrics."""
+"""Run NeMo RL GRPO with progress reporting and component metrics."""
 
 import json
 from pathlib import Path

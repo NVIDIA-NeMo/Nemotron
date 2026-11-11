@@ -120,9 +120,9 @@ def _contains_unescaped(value: str, needle: str) -> bool:
 
 
 def _split_record_values(payload: str) -> list[str]:
-    # Read historical pipe-delimited V3/V4 targets, while new serialization
-    # uses semicolons so the ParseBench Markdown parser sees only the actual
-    # data table. Old records always have an unescaped separator pipe.
+    # Accept pipe- or semicolon-delimited record fields. Semicolon delimiters
+    # keep metadata records distinct from Markdown table rows; an unescaped
+    # pipe selects the pipe-delimited form.
     delimiter = "|" if _contains_unescaped(payload, "|") else ";"
     values: list[str] = []
     current: list[str] = []
@@ -145,7 +145,7 @@ def _split_record_values(payload: str) -> list[str]:
 
 
 def parse_chart_target(text: str, *, strict: bool = True) -> ChartTarget:
-    """Parse V3/V4/V5 output; non-strict mode salvages known records and tables."""
+    """Parse chart records and tables, recovering recognized fields in non-strict mode."""
     lines = text.strip().splitlines()
     opening_index = next((idx for idx, line in enumerate(lines) if _CHART_OPEN_RE.fullmatch(line.strip())), None)
     if opening_index is None:
@@ -256,8 +256,8 @@ def parse_chart_target(text: str, *, strict: bool = True) -> ChartTarget:
                 item_values = [values[0][len("items="):], *values[1:]]
                 legend_title = ""
             else:
-                # Backward compatibility for V3/V4 records, including the
-                # historical empty title slot (`; A ; B`).
+                # Accept a positional legend title, including an empty
+                # title slot (`; A ; B`).
                 item_values = values[1:]
                 legend_title = values[0] if values else ""
             if not any(item_values):
@@ -427,7 +427,7 @@ def parse_chart_target(text: str, *, strict: bool = True) -> ChartTarget:
 def chart_target_tables(target: ChartTarget) -> tuple[tuple[str, str], ...]:
     """Expose shared and panel-scoped tables through one consumer API.
 
-    The empty scope identifies a legacy/shared table.  V5 consumers should
+    The empty scope identifies a shared table. Consumers should
     preserve non-empty panel ids through scoring or export instead of
     concatenating tables whose axes may have different semantics.
     """
@@ -443,8 +443,6 @@ def chart_target_layer_tables(target: ChartTarget) -> tuple[tuple[str, str], ...
 
     return tuple((table.table_id, table.table_markdown) for table in target.layer_tables)
 
-
-# Upstream targets.py SHA256: b0473fc1427ce09528cd983b5d2121fe59754f28223863ea4be137c90d3144f3
 
 def parse_markdown_table(markdown: str) -> list[list[str]]:
     # Chart targets may have a small XML-like context preamble ahead of the

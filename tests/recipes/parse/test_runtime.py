@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from nemotron.recipes.parse import RECIPE_VERSION
 from nemotron.recipes.parse.runtime import launch, setup
 
 
@@ -124,12 +125,37 @@ def test_wheel_setup_fails_before_creating_runtime(tmp_path, monkeypatch):
     assert not runtime.exists()
 
 
-def test_setup_cli_preserves_original_automatic_backend_selection(tmp_path, monkeypatch):
+def test_setup_cli_defaults_to_automatic_backend_selection(tmp_path, monkeypatch):
     calls = []
     monkeypatch.setattr(setup.sys, "argv", ["setup.py", "--runtime-dir", str(tmp_path)])
     monkeypatch.setattr(setup, "install", lambda *a, **kw: calls.append((a, kw)))
     setup.main()
     assert calls == [((tmp_path,), {"torch_backend": "auto", "python_version": "3.13.16"})]
+
+
+def test_install_request_records_public_recipe_and_detects_changed_inputs(tmp_path, monkeypatch):
+    runtime = tmp_path / "runtime-inputs"
+    (runtime / "patches").mkdir(parents=True)
+    files = ("setup.py", "launch.py", "requirements.txt", "launcher-requirements.txt", "patches/fixture.patch")
+    for name in files:
+        (runtime / name).write_text(f"fixture content: {name}\n")
+    monkeypatch.setattr(setup, "RUNTIME", runtime)
+    monkeypatch.setattr(setup, "SOURCES", (("fixture", "https://example.com/framework.git", "a" * 40),))
+
+    original = setup.install_request("auto", "3.13.16")
+    assert original["recipe_version"] == RECIPE_VERSION
+    assert "upstream_revision" not in original
+    assert original["framework_revisions"] == {"fixture": "a" * 40}
+    assert set(original["input_sha256"]) == set(files)
+    assert setup.install_request("auto", "3.13.16") == original
+
+    (runtime / "patches/fixture.patch").write_text("changed framework patch\n")
+    changed = setup.install_request("auto", "3.13.16")
+    assert changed["input_sha256"]["patches/fixture.patch"] != original["input_sha256"]["patches/fixture.patch"]
+    assert {name for name in files if changed["input_sha256"][name] != original["input_sha256"][name]} == {
+        "patches/fixture.patch"
+    }
+    assert setup.install_request("cpu", "3.13.16") != changed
 
 
 def test_missing_runtime_fails_before_dispatch(tmp_path, monkeypatch):

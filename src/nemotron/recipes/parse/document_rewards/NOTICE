@@ -1,15 +1,15 @@
 Document reward baselines
 
 Chart parsing, associated fact extraction, Unicode normalization and numeric
-assignment are extracted from the Nemotron Parse RLVR helpers. The public
-functions compose these primitives into independent baselines; they do not
-reproduce the complete production reward configuration.
+assignment provide component scores for document evaluation and task-specific
+reward functions.
 
 _grits.py adapts the GriTS reference implementation from Microsoft Table
 Transformer and the ParseBench vendored implementation.
 Copyright (C) 2021 Microsoft Corporation.
 License: MIT; see licenses/GriTS-MIT.txt.
 https://github.com/microsoft/table-transformer
+https://github.com/run-llama/ParseBench
 Smock, Pesala, Abraham, "GriTS: Grid Table Similarity Metric for Table Structure
 Recognition", ICDAR 2023, https://arxiv.org/abs/2203.12555.
 

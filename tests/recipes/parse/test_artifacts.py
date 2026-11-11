@@ -2,6 +2,7 @@
 
 import json
 
+from nemotron.recipes.parse import RECIPE_VERSION
 from nemotron.recipes.parse.common import artifact, model_from_artifact
 from nemotron.recipes.parse.dental.evaluate import evaluation_key
 
@@ -28,9 +29,19 @@ def test_model_artifact_preserves_checkpoint_inventory_and_evaluation_identity(t
     assert evaluation_key(checkpoint, rows, samples=8) == key
     assert not (checkpoint / "metadata.json").exists()
     metadata = json.loads((output / "metadata.json").read_text())
+    handoff = json.loads(result.read_text())
     assert metadata["path"] == str(output)
     assert metadata["metadata"]["payload_path"] == str(checkpoint)
-    assert json.loads(result.read_text())["path"] == str(checkpoint)
+    assert handoff["path"] == str(checkpoint)
+    assert handoff["schema_version"] == 1
+    assert handoff["recipe_version"] == metadata["metadata"]["recipe_version"] == RECIPE_VERSION
+    assert "source_revision" not in handoff and "source_revision" not in metadata["metadata"]
+    assert model_from_artifact(result) == checkpoint
+
+    # Existing v1 handoffs may have additional source metadata instead of a recipe version.
+    handoff.pop("recipe_version")
+    handoff["source_revision"] = "prior-release"
+    result.write_text(json.dumps(handoff))
     assert model_from_artifact(result) == checkpoint
 
 

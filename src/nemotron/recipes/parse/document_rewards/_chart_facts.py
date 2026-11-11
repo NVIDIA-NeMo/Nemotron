@@ -143,10 +143,10 @@ def number(value: str, *, context: str = '') -> tuple[float, str] | None:
 
 
 def _unconsumed_record_text(text: str) -> str:
-    """Recover fields discarded by the pinned production parser.
+    """Retain record fields not represented in the parsed chart structure.
 
-    This is content accounting, not a parser fork: historical references remain
-    scorable and their residual text is compared to predicted residual text.
+    Compare residual reference and prediction text so extra fields, duplicate
+    singleton records and empty singleton values remain part of the score.
     """
     residual = []
     seen_singletons = set()
@@ -192,8 +192,8 @@ def categorical_field(header: str) -> bool:
 def contract(text: str) -> dict:
     try:
         target = parse_chart_target(text, strict=True)
-        # The production parser validates layers; add the same referential
-        # integrity checks for series bindings, which it currently only parses.
+        # Validate series bindings against declared panels and axes, extending
+        # the chart parser's referential integrity checks for layers.
         panels = {panel.panel_id: f'panel:{i}' for i, panel in enumerate(target.panels)}
         axes = {channel for channel, _ in target.axes}
         seen_bindings = set()

@@ -53,12 +53,12 @@ def execute(stage: str, ctx: typer.Context) -> None:
 
 
 def data(ctx: typer.Context) -> None:
-    """Generate the reference dental images and complete Parse targets."""
+    """Generate the dental example images and complete Parse targets."""
     execute("data", ctx)
 
 
 def sft(ctx: typer.Context) -> None:
-    """Fine-tune the full Parse model with the reference SFT schedule."""
+    """Fine-tune the full Parse model with the configured SFT schedule."""
     execute("sft", ctx)
 
 

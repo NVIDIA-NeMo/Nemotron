@@ -3,6 +3,7 @@
 Adapted from Microsoft's Table Transformer reference implementation and the
 ParseBench vendored implementation.  This module intentionally contains only
 the 2D-MSS alignment and Top/Con entry points needed by the reward scorer.
+ParseBench: https://github.com/run-llama/ParseBench
 
 Reference: Smock, Pesala, Abraham, "GriTS: Grid Table Similarity Metric for
 Table Structure Recognition", ICDAR 2023, https://arxiv.org/abs/2203.12555.
