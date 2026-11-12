@@ -11,3 +11,4 @@ selection_pages: 256
 mining_samples: 4
 evaluation_samples: 8
 training: {}
+task: nemotron.recipes.parse.dental.task.DentalTask

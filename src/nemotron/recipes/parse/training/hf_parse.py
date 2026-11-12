@@ -6,12 +6,13 @@ Checkpoint tensor names and the native encoder/decoder modules are preserved.
 """
 
 import torch
-import torch.nn.functional as F
+from torch.nn import functional
 from transformers.modeling_outputs import CausalLMOutputWithPast
+
 from .hf_nemotron_parse_modeling import NemotronParseForConditionalGeneration
 
 
-class DentalParseForConditionalGeneration(NemotronParseForConditionalGeneration):
+class ParseForConditionalGeneration(NemotronParseForConditionalGeneration):
     def __init__(self, config):
         super().__init__(config)
         self.configure_trainable_layers()
@@ -24,7 +25,8 @@ class DentalParseForConditionalGeneration(NemotronParseForConditionalGeneration)
         return model
 
     def configure_trainable_layers(self):
-        scope = getattr(self.config, "dental_train_scope", "full")
+        # Accept checkpoints produced before the generic adapter naming.
+        scope = getattr(self.config, "parse_train_scope", getattr(self.config, "dental_train_scope", "full"))
         if scope not in ("full", "decoder"):
             raise ValueError("Training scope must be full or decoder")
         self.requires_grad_(scope == "full")
@@ -83,14 +85,10 @@ class DentalParseForConditionalGeneration(NemotronParseForConditionalGeneration)
 
         if input_ids is None or image_sizes is None or content_sizes is None:
             raise ValueError("Expanded input_ids and both image geometry tensors are required")
-        counts_from_geometry = [
-            (height // 16) * (width // 64) + 1 for height, width in image_sizes.tolist()
-        ]
+        counts_from_geometry = [(height // 16) * (width // 64) + 1 for height, width in image_sizes.tolist()]
         if len(set(counts_from_geometry)) == 1:
             count = counts_from_geometry[0]
-            if count >= input_ids.shape[1] or not torch.all(
-                input_ids[:, :count] == self.config.pad_token_id
-            ):
+            if count >= input_ids.shape[1] or not torch.all(input_ids[:, :count] == self.config.pad_token_id):
                 raise ValueError("Input visual placeholders do not match the encoded image")
             if attention_mask is not None and not attention_mask[:, :count].bool().all():
                 raise ValueError("Visual placeholders must remain valid in attention_mask")
@@ -105,34 +103,24 @@ class DentalParseForConditionalGeneration(NemotronParseForConditionalGeneration)
                 use_cache=False,
                 return_dict=True,
             )
-            output = CausalLMOutputWithPast(logits=F.pad(native.logits, (0, 0, count, 0)))
+            output = CausalLMOutputWithPast(logits=functional.pad(native.logits, (0, 0, count, 0)))
             return output if return_dict else (output.logits, None)
         vision, visual_mask = self.encoder(pixel_values, image_sizes, content_sizes)
         embeddings = self.decoder.embed_tokens(input_ids)
-        mask = (
-            torch.ones_like(input_ids, dtype=torch.bool)
-            if attention_mask is None
-            else attention_mask.bool()
-        )
+        mask = torch.ones_like(input_ids, dtype=torch.bool) if attention_mask is None else attention_mask.bool()
         rows = []
         counts = visual_mask.sum(dim=1).tolist()
         for index, count in enumerate(counts):
-            if count >= input_ids.shape[1] or not torch.all(
-                input_ids[index, :count] == self.config.pad_token_id
-            ):
+            if count >= input_ids.shape[1] or not torch.all(input_ids[index, :count] == self.config.pad_token_id):
                 raise ValueError("Input visual placeholders do not match the encoded image")
             if not mask[index, :count].all():
                 raise ValueError("Visual placeholders must remain valid in attention_mask")
-            rows.append(
-                torch.cat(
-                    (vision[index, :count].to(embeddings.dtype), embeddings[index, count:]), dim=0
-                )
-            )
+            rows.append(torch.cat((vision[index, :count].to(embeddings.dtype), embeddings[index, count:]), dim=0))
         hidden = self.decoder(torch.stack(rows), None, mask)
         # Native Parse projects text only. Visual positions have no targets.
         logits = torch.cat(
             [
-                F.pad(self.lm_head(hidden[index : index + 1, count:]), (0, 0, count, 0))
+                functional.pad(self.lm_head(hidden[index : index + 1, count:]), (0, 0, count, 0))
                 for index, count in enumerate(counts)
             ],
             dim=0,

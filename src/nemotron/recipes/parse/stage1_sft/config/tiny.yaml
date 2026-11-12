@@ -8,3 +8,4 @@ training:
     val_every_steps: 2
   lr_scheduler:
     lr_decay_steps: 2
+task: nemotron.recipes.parse.dental.task.DentalTask

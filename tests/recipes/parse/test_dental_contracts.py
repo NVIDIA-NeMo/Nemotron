@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from nemotron.recipes.parse.dental.config import recipe_root, sft_config
 from nemotron.recipes.parse.dental.curriculum import select_training_pages
 from nemotron.recipes.parse.dental.evaluate import pass_at_k
 from nemotron.recipes.parse.dental.metrics import components, exact_page_reward, successful_answer
-from nemotron.recipes.parse.dental.model import prepare_model, sft_checkpoint
+from nemotron.recipes.parse.training.config import recipe_root, sft_config
+from nemotron.recipes.parse.training.model import prepare_model, sft_checkpoint
 
 
 @pytest.fixture
@@ -86,7 +86,7 @@ def test_packaged_sft_config_resolves_explicit_stage_paths_from_any_cwd(tmp_path
     assert cfg["dataset"]["path"] == str(tmp_path / "data/train.jsonl")
     assert cfg["validation_dataset"]["path"] == str(tmp_path / "data/monitor.jsonl")
     assert cfg["checkpoint"]["checkpoint_dir"] == str(tmp_path / "sft/checkpoints")
-    assert cfg["dataset"]["_target_"] == "nemotron.recipes.parse.dental.sft_data.make_dataset"
+    assert cfg["dataset"]["_target_"] == "nemotron.recipes.parse.training.sft_data.make_dataset"
     assert cfg["step_scheduler"]["max_steps"] == 2852
     assert cfg["step_scheduler"]["global_batch_size"] == 1
     assert cfg["optimizer"]["lr"] == 3e-6
@@ -95,7 +95,7 @@ def test_packaged_sft_config_resolves_explicit_stage_paths_from_any_cwd(tmp_path
 def test_packaged_rl_config_preserves_checkpoint_loading_and_scientific_budget():
     cfg = yaml.safe_load((recipe_root() / "stage2_rlvr/config/grpo.yaml").read_text())
     assert cfg["policy"]["generation"]["vllm_cfg"]["load_format"] == "auto"
-    assert cfg["data"]["train"]["dataset_name"] == "nemotron.recipes.parse.dental.rl_data.DentalPages"
+    assert cfg["data"]["train"]["dataset_name"] == "nemotron.recipes.parse.training.rl_data.ParsePages"
     assert cfg["grpo"]["max_num_steps"] == 128
     assert cfg["grpo"]["num_prompts_per_step"] * cfg["grpo"]["num_generations_per_prompt"] == 64
     assert cfg["grpo"]["overlong_filtering"] is True
@@ -110,7 +110,12 @@ def test_checkpoint_handoff_selects_latest_numeric_step(tmp_path):
 def test_model_view_preserves_weights_and_rejects_changed_identity(tmp_path):
     checkpoint = tmp_path / "checkpoint"
     checkpoint.mkdir()
-    original = {"is_encoder_decoder": False, "decoder": {"causal_vision_prefix": True}}
+    original = {
+        "is_encoder_decoder": False,
+        "decoder": {"causal_vision_prefix": True},
+        "dental_train_scope": "decoder",
+        "auto_map": {"AutoModel": "hf_dental_parse.DentalParseForConditionalGeneration"},
+    }
     (checkpoint / "config.json").write_text(json.dumps(original))
     (checkpoint / "model.safetensors").write_bytes(b"synthetic unit-test placeholder")
     (checkpoint / "tokenizer.json").write_text("{}")
@@ -118,8 +123,10 @@ def test_model_view_preserves_weights_and_rejects_changed_identity(tmp_path):
     assert prepare_model(checkpoint, output) == output
     assert (output / "model.safetensors").resolve() == checkpoint / "model.safetensors"
     assert json.loads((checkpoint / "config.json").read_text()) == original
-    assert json.loads((output / "config.json").read_text())["dental_train_scope"] == "full"
-    assert (output / "hf_dental_parse.py").is_file()
+    config = json.loads((output / "config.json").read_text())
+    assert config["parse_train_scope"] == "full" and "dental_train_scope" not in config
+    assert config["auto_map"]["AutoModel"] == "hf_parse.ParseForConditionalGeneration"
+    assert (output / "hf_parse.py").is_file()
     assert prepare_model(checkpoint, output) == output
     with pytest.raises(FileExistsError, match="different or unknown inputs"):
         prepare_model(checkpoint, output, scope="decoder")

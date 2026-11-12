@@ -2,17 +2,18 @@
 
 import json
 from pathlib import Path
+
 import torch
 from datasets import Dataset
-from PIL import Image
 from nemo_rl.data.datasets.raw_dataset import RawDataset
 from nemo_rl.data.multimodal_utils import PackedTensor
+from PIL import Image
 
 
-class DentalPages(RawDataset):
+class ParsePages(RawDataset):
     def __init__(self, data_path, split=None, split_validation_size=0, seed=42, **kwargs):
         path = Path(data_path).absolute()
-        self.task_name = "dental-page"
+        self.task_name = "parse-page"
         rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
         for row in rows:
             row.update(image=str((path.parent / row["image"]).absolute()), task_name=self.task_name)
@@ -54,8 +55,6 @@ def process_page(row, task_data_spec, processor, max_seq_length, idx):
         loss_multiplier=1.0,
         extra_env_info=row,
         stop_strings=[],
-        vllm_content=tokenizer.decode(
-            [tokenizer.pad_token_id] + prompt_ids, skip_special_tokens=False
-        ),
+        vllm_content=tokenizer.decode([tokenizer.pad_token_id] + prompt_ids, skip_special_tokens=False),
         vllm_multi_modal_data={"image": image},
     )

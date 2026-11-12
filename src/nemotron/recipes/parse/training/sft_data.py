@@ -1,13 +1,14 @@
-"""Full-document dental labels for Automodel's standard VLM SFT recipe."""
+"""Full-document Parse targets for Automodel's standard VLM SFT recipe."""
 
 import json
 from pathlib import Path
 
-from PIL import Image
 import torch
+from PIL import Image
 from torch.utils.data import Dataset
 
-class DentalDocuments(Dataset):
+
+class ParseDocuments(Dataset):
     def __init__(self, path: str):
         manifest = Path(path).absolute()
         self.rows = [json.loads(line) for line in manifest.read_text().splitlines() if line.strip()]
@@ -25,8 +26,8 @@ class DentalDocuments(Dataset):
         return self.rows[index]
 
 
-def make_dataset(path: str) -> DentalDocuments:
-    return DentalDocuments(path)
+def make_dataset(path: str) -> ParseDocuments:
+    return ParseDocuments(path)
 
 
 def collate(examples: list[dict], processor, max_length: int = 4096) -> dict:
@@ -43,9 +44,7 @@ def collate(examples: list[dict], processor, max_length: int = 4096) -> dict:
     for row, (height, width) in zip(examples, batch["image_sizes"].tolist(), strict=True):
         visual_tokens = (height // 16) * (width // 64) + 1
         prompt = tokenizer.encode(row["prompt"], add_special_tokens=False)
-        target = tokenizer.encode(row["target"], add_special_tokens=False) + [
-            tokenizer.eos_token_id
-        ]
+        target = tokenizer.encode(row["target"], add_special_tokens=False) + [tokenizer.eos_token_id]
         sequence = [tokenizer.pad_token_id] * visual_tokens + prompt + target
         if len(sequence) - 1 > max_length:
             raise ValueError(f"Complete document exceeds max_length: {row.get('id', 'unknown')}")

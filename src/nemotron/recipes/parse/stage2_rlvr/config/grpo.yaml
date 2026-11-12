@@ -23,7 +23,7 @@ loss_fn:
 policy:
   model_name: ${model_path}
   hf_config_overrides:
-    dental_train_scope: decoder
+    parse_train_scope: decoder
   precision: bfloat16
   train_global_batch_size: 64
   train_micro_batch_size: 8
@@ -82,22 +82,22 @@ policy:
 data:
   num_workers: 0
   train:
-    dataset_name: nemotron.recipes.parse.dental.rl_data.DentalPages
+    dataset_name: nemotron.recipes.parse.training.rl_data.ParsePages
     data_path: ${data_dir}/rl_train.jsonl
     split_validation_size: 0
   validation:
-    dataset_name: nemotron.recipes.parse.dental.rl_data.DentalPages
+    dataset_name: nemotron.recipes.parse.training.rl_data.ParsePages
     data_path: ${data_dir}/monitor.jsonl
     split_validation_size: 0
   default:
-    processor: dental_page
+    processor: parse_page
     prompt_file: ${prompt_file}
-    env_name: dental-page
+    env_name: parse-page
 env:
-  dental-page:
+  parse-page:
     phase: train
     metrics_file: ${output_dir}/train-components.jsonl
-  dental-page-validation:
+  parse-page-validation:
     phase: validation
     metrics_file: ${output_dir}/validation-components.jsonl
 checkpointing:

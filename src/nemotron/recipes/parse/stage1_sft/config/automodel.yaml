@@ -1,4 +1,4 @@
-# Supervised fine-tuning of complete dental pages.
+# Supervised fine-tuning of complete Parse pages.
 recipe: FinetuneRecipeForVLM
 seed: 42
 step_scheduler:
@@ -45,7 +45,7 @@ freeze_config:
 loss_fn:
   _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
 dataset:
-  _target_: nemotron.recipes.parse.dental.sft_data.make_dataset
+  _target_: nemotron.recipes.parse.training.sft_data.make_dataset
   path: ${data_dir}/train.jsonl
 dataloader:
   _target_: torchdata.stateful_dataloader.StatefulDataLoader
@@ -53,10 +53,10 @@ dataloader:
   pin_memory: true
   shuffle: true
   collate_fn:
-    _target_: nemotron.recipes.parse.dental.sft_data.collate
+    _target_: nemotron.recipes.parse.training.sft_data.collate
     max_length: 4096
 validation_dataset:
-  _target_: nemotron.recipes.parse.dental.sft_data.make_dataset
+  _target_: nemotron.recipes.parse.training.sft_data.make_dataset
   path: ${data_dir}/monitor.jsonl
 validation_dataloader:
   _target_: torchdata.stateful_dataloader.StatefulDataLoader
@@ -64,7 +64,7 @@ validation_dataloader:
   pin_memory: true
   shuffle: false
   collate_fn:
-    _target_: nemotron.recipes.parse.dental.sft_data.collate
+    _target_: nemotron.recipes.parse.training.sft_data.collate
     max_length: 4096
 optimizer:
   _target_: torch.optim.AdamW

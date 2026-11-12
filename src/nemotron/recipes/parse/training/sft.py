@@ -1,10 +1,11 @@
 """Small observation hooks around Automodel's native VLM training recipe."""
 
 import json
-from pathlib import Path
 import time
+from pathlib import Path
+
 from .data import load_pages
-from .metrics import components
+from .task import Monitor
 
 
 def predict(model, processor, rows):
@@ -49,18 +50,16 @@ def predict(model, processor, rows):
                 if ended:
                     tokens = tokens[: tokens.index(processor.tokenizer.eos_token_id) + 1]
                 text = processor.tokenizer.decode(tokens, skip_special_tokens=False)
-                results.append(
-                    dict(id=row["id"], prediction=text, ended=ended, **components(text, row))
-                )
+                results.append(dict(id=row["id"], prediction=text, ended=ended))
     return results
 
 
-def make_trainer(config, observer):
+def make_trainer(config, observer, *, monitor: Monitor | None = None):
     import nemo_rl  # noqa: F401 -- pinned Transformers remote-code compatibility fixes
     from nemo_automodel.components.config.loader import ConfigNode
     from nemo_automodel.recipes.vlm.finetune import FinetuneRecipeForVLM
 
-    class DentalSFT(FinetuneRecipeForVLM):
+    class ParseSFT(FinetuneRecipeForVLM):
         def _make_progress_bar(self, total=None, initial=0):
             return None  # The stage observer reports training progress.
 
@@ -83,10 +82,11 @@ def make_trainer(config, observer):
 
         def _run_validation_epoch(self, loader):
             result = super()._run_validation_epoch(loader)
+            if monitor is None:
+                return result
             rows = load_pages(config["validation_dataset"]["path"])
-            predictions = predict(self.model_parts[0], self.processor, rows)
-            for key in ("chart_exact", "text_cer"):
-                result.metrics[key] = sum(r[key] for r in predictions) / len(predictions)
+            predictions, metrics = monitor(self.model_parts[0], self.processor, rows)
+            result.metrics.update(metrics)
             step = 0 if self.baseline else int(result.step) + 1
             path = Path(config["checkpoint"]["checkpoint_dir"]).parent / f"predictions-{step}.json"
             path.write_text(json.dumps(predictions, indent=2))
@@ -95,7 +95,7 @@ def make_trainer(config, observer):
     import torch
 
     torch.set_num_threads(4)
-    trainer = DentalSFT(ConfigNode(config))
+    trainer = ParseSFT(ConfigNode(config))
     trainer.baseline = True
     trainer.started = time.monotonic()
     trainer.setup()

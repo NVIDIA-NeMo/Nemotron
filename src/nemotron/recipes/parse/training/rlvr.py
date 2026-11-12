@@ -1,38 +1,39 @@
 """Run NeMo RL GRPO with progress reporting and component metrics."""
 
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 
-def train(config, observer):
+def train(config, observer, *, environment_class: str, reward_metric: str | None = None):
     import ray
     from nemo_rl.algorithms.grpo import MasterConfig, setup
     from nemo_rl.algorithms.utils import get_tokenizer
-    from nemo_rl.data.utils import setup_response_data
     from nemo_rl.data.processors import PROCESSOR_REGISTRY, register_processor
+    from nemo_rl.data.utils import setup_response_data
     from nemo_rl.data_plane.factory import make_policy_factory, select_sync_trainer
     from nemo_rl.distributed.ray_actor_environment_registry import ACTOR_ENVIRONMENT_REGISTRY
     from nemo_rl.distributed.virtual_cluster import PY_EXECUTABLES
-    from nemo_rl.environments.utils import ENV_REGISTRY, register_env, create_env
+    from nemo_rl.environments.utils import ENV_REGISTRY, create_env, register_env
     from nemo_rl.models.generation import configure_generation_config
     from nemo_rl.utils.logger import LoggerInterface
     from nemo_rl.utils.venvs import add_hf_modules_cache_to_pythonpath
+
     from .config import worker_env
     from .rl_data import process_page
 
-    # All native workers use the lab's shared environment.
-    ACTOR_ENVIRONMENT_REGISTRY.update(
-        {name: PY_EXECUTABLES.SYSTEM for name in ACTOR_ENVIRONMENT_REGISTRY}
-    )
+    # Native workers share the recipe's isolated runtime.
+    ACTOR_ENVIRONMENT_REGISTRY.update({name: PY_EXECUTABLES.SYSTEM for name in ACTOR_ENVIRONMENT_REGISTRY})
     master = MasterConfig(**config)
-    if "dental_page" not in PROCESSOR_REGISTRY:
-        register_processor("dental_page", process_page)
-    actor = "nemotron.recipes.parse.dental.environment.DentalEnvironment"
+    if "parse_page" not in PROCESSOR_REGISTRY:
+        register_processor("parse_page", process_page)
+    actor = environment_class
     ACTOR_ENVIRONMENT_REGISTRY[actor] = PY_EXECUTABLES.SYSTEM
-    for name in ("dental-page", "dental-page-validation"):
+    for name in ("parse-page", "parse-page-validation"):
         if name not in ENV_REGISTRY:
             register_env(name, actor)
+        elif ENV_REGISTRY[name]["actor_class_fqn"] != actor:
+            raise ValueError(f"{name} already uses a different reward environment; start a new stage process")
     for actor in ("VllmGenerationWorker", "VllmAsyncGenerationWorker"):
         module = "vllm_worker_async" if actor.startswith("VllmAsync") else "vllm_worker"
         ACTOR_ENVIRONMENT_REGISTRY[f"nemo_rl.models.generation.vllm.{module}.{actor}"] = sys.executable
@@ -57,7 +58,7 @@ def train(config, observer):
             values = {k: float(v) for k, v in metrics.items() if isinstance(v, (int, float))}
             # One actor writes each file; consume only complete appended records.
             for cfg in config["env"].values():
-                if cfg["phase"] != prefix:
+                if cfg.get("phase") != prefix or not cfg.get("metrics_file"):
                     continue
                 path = Path(cfg["metrics_file"])
                 if not path.exists():
@@ -74,11 +75,9 @@ def train(config, observer):
                         samples.extend(json.loads(line)["samples"])
                     self.offsets[path] = stream.tell()
                 if samples:
-                    values.update(
-                        {k: sum(s[k] for s in samples) / len(samples) for k in samples[0]}
-                    )
-            if "page_exact" in values:
-                values.setdefault("reward", values["page_exact"])
+                    values.update({k: sum(s[k] for s in samples) / len(samples) for k in samples[0]})
+            if reward_metric is not None and reward_metric in values:
+                values.setdefault("reward", values[reward_metric])
             observer.update(int(step), prefix, values)
 
         def log_histogram(self, histogram, step, name):
@@ -98,14 +97,10 @@ def train(config, observer):
     )
     processor = get_tokenizer(master.policy["tokenizer"], get_processor=True)
     tokenizer = processor.tokenizer
-    master.policy["generation"] = configure_generation_config(
-        master.policy["generation"], tokenizer
-    )
+    master.policy["generation"] = configure_generation_config(master.policy["generation"], tokenizer)
     dataset, validation = setup_response_data(processor, master.data, None, is_vlm=True)
-    environment = create_env("dental-page", master.env["dental-page"])
-    validation_environment = create_env(
-        "dental-page-validation", master.env["dental-page-validation"]
-    )
+    environment = create_env("parse-page", master.env["parse-page"])
+    validation_environment = create_env("parse-page-validation", master.env["parse-page-validation"])
 
     def mapping(data, env):
         entries = data.values() if isinstance(data, dict) else [data]
@@ -138,7 +133,7 @@ def train(config, observer):
     logger.loggers.append(local)
     try:
         with checkpointer:
-            select_sync_trainer(master, label="Dental RLVR")(
+            select_sync_trainer(master, label="Parse RLVR")(
                 policy,
                 generation,
                 loader,
@@ -159,9 +154,7 @@ def train(config, observer):
         policy.shutdown()
         ray.shutdown()
     checkpoints = list(
-        Path(config["checkpointing"]["checkpoint_dir"]).glob(
-            "step_*/policy/weights/model/consolidated"
-        )
+        Path(config["checkpointing"]["checkpoint_dir"]).glob("step_*/policy/weights/model/consolidated")
     )
     if not checkpoints:
         raise RuntimeError("Native GRPO did not publish a consolidated checkpoint")

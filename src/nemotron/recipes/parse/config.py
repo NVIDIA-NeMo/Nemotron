@@ -23,6 +23,7 @@ class DataConfig(StageConfig):
 
 
 class SFTConfig(StageConfig):
+    task: str | None = "nemotron.recipes.parse.dental.task.DentalTask"
     output_dir: Path = Path(".nemotron/parse/sft")
     model: str = "nvidia/Nemotron-3.5-Parse"
     training_config: Path = ROOT / "stage1_sft/config/automodel.yaml"
@@ -30,6 +31,7 @@ class SFTConfig(StageConfig):
 
 
 class RLVRConfig(StageConfig):
+    task: str = Field(default="nemotron.recipes.parse.dental.task.DentalTask", min_length=1)
     output_dir: Path = Path(".nemotron/parse/rlvr")
     sft_output: Path = Path(".nemotron/parse/sft")
     model: str | None = None

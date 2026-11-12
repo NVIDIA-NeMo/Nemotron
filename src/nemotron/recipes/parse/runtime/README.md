@@ -46,6 +46,9 @@ PARSE_PYTHON="$PARSE_RUNTIME/venv/bin/python"
 Follow the [recipe commands](../README.md#run-the-dental-worked-example) for data
 preparation, SFT, RLVR and evaluation. Pass `runtime_dir="$PARSE_RUNTIME"` to
 each stage. The launcher starts stages in separate processes using this runtime.
+The bundled commands select dental reference data preparation, monitoring,
+rewards and evaluation; follow the [task adaptation guide](../training/README.md)
+when developing your own use case.
 
 To install elsewhere, choose a different `PARSE_RUNTIME` before setup and pass
 that same path to every stage command. Bundled profiles otherwise use

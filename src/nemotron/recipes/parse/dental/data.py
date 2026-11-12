@@ -124,14 +124,6 @@ def context_id(record):
     ).hexdigest()
 
 
-def load_pages(manifest):
-    manifest = Path(manifest)
-    rows = [json.loads(line) for line in manifest.read_text().splitlines() if line.strip()]
-    for row in rows:
-        row["image"] = str((manifest.parent / row["image"]).absolute())
-    return rows
-
-
 def save_pages(records, output, split):
     output = Path(output)
     images = output / "images"

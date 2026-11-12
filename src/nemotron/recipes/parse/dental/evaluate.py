@@ -1,4 +1,4 @@
-"""Matched generation and full-page reliability estimates."""
+"""Dental reference evaluation with matched generation and task-specific scores."""
 
 import gc
 import hashlib
@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import sys
 from .metrics import components, successful_answer
-from .config import worker_env
+from nemotron.recipes.parse.training.config import worker_env
 
 
 def evaluation_key(model, rows, samples, processor_source=None):
@@ -158,3 +158,15 @@ def evaluate_isolated(model, rows, output, samples=8, processor_source=None):
     finally:
         if owns_ray:
             ray.shutdown()
+
+
+def summarize(answers: list[dict]) -> dict:
+    counts = [len(group["answers"]) for group in answers]
+    if not counts or min(counts) == 0 or len(set(counts)) != 1:
+        raise ValueError("Evaluation requires equal, nonzero sample counts per page")
+    flattened = [answer for group in answers for answer in group["answers"]]
+    keys = ("text_cer", "chart_exact", "patient_fields", "history_rows", "ended")
+    return dict(pages=len(answers), answers=len(flattened), samples=counts[0],
+                correct=sum(answer["correct"] for answer in flattened),
+                pass_at_k={str(k): pass_at_k(answers, k) for k in (1, 2, 4, 8) if k <= counts[0]},
+                metrics={key: sum(a[key] for a in flattened) / len(flattened) for key in keys})

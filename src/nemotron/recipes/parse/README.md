@@ -7,24 +7,24 @@ with verifiable rewards (RLVR), and held-out evaluation. It provides stage
 commands, a model adapter, an isolated runtime and explicit dataset/checkpoint
 handoffs.
 
-**Dental forms are the worked data preparation example.** The example shows how
-to generate fictional records, render page images and complete Parse targets,
-and create separate training, monitoring and test sets. Run it to understand
-the workflow, then [adapt the example to your domain](#adapt-the-example-to-your-domain)
-using your own documents, labels and correctness criteria. The packaged defaults
-also include dental monitoring, rewards and evaluation; the adaptation guide
-identifies those components alongside data preparation.
+**Data preparation, rewards and evaluation are dental reference examples.**
+The example generates fictional records, renders page images and complete Parse
+targets, and defines dental correctness criteria for monitoring, RLVR rewards
+and held-out evaluation. Customers should develop their own data preparation,
+reward functions and evaluation for their use cases. Reuse the shared SFT/RLVR
+training modules and [adapt the task components](#adapt-the-example-to-your-domain)
+to your documents, labels and quality requirements.
 
 | Command | Input | Output |
 | --- | --- | --- |
 | `nemotron parse data` | Dental example record/rendering rules and seed | Images, full-page Parse targets, train/monitor/test manifests and dataset identity |
-| `nemotron parse sft` | Dataset artifact and pinned base model | Full-model SFT checkpoint and greedy monitor history |
-| `nemotron parse rlvr` | Dataset and SFT model artifacts | Candidate mining, decoder GRPO checkpoint, matched sampled evaluation before/after |
-| `nemotron parse eval` | Dataset and a model artifact or checkpoint | Held-out answers and component metrics |
+| `nemotron parse sft` | Dataset artifact, base model and optional task monitor | Full-model SFT checkpoint and training/monitor history |
+| `nemotron parse rlvr` | Dataset and SFT model artifacts, task adapter and reward environment | Candidate mining, decoder GRPO checkpoint and task-defined evaluation before/after |
+| `nemotron parse eval` | Dental example dataset and a model artifact or checkpoint | Held-out answers and dental reference metrics |
 
-The model adapter supports the Parse architecture. Reuse its model integration,
-training orchestration and artifact flow while adapting the example's data and
-task logic. Optional [document component scorers](document_rewards/README.md)
+The [shared training modules](training/README.md) support the Parse architecture.
+They provide model integration, training orchestration and artifact flow; a
+configured task supplies domain-specific monitoring, rewards and evaluation. Optional [document component scorers](document_rewards/README.md)
 provide building blocks for your domain's evaluation and reward functions.
 
 ## Runtime
@@ -118,52 +118,58 @@ explains how to connect another source to this implementation.
 ## Adapt the example to your domain
 
 Start by defining the document types, complete extraction targets and success
-criteria for your task. Reuse the Parse model/runtime and the staged
-data → SFT → RLVR → evaluation workflow. In this version, connecting a new
-domain requires adapting example code as well as supplying data: changing
-`data_dir` alone leaves dental monitors, candidate generation and scoring active.
-There is no built-in domain selector or automatic reference conversion.
+criteria for your task. The SFT and RLVR stages import reusable modules from
+`training/`; their task-specific behavior comes from the configured `task`.
+The bundled profiles select `nemotron.recipes.parse.dental.task.DentalTask`.
+Changing `data_dir` alone retains that dental task.
+
+Implement your own importable task class or factory and select it with
+`task=my_domain.task.DocumentTask`. The [training guide](training/README.md)
+describes the hooks, input/output contracts and reward environment wiring.
+SFT can use `task=null` for native validation loss without additional task
+monitoring. RLVR requires a task and its reward environment.
 
 | Component | Reference implementation | What to adapt |
 | --- | --- | --- |
-| Data preparation | [Data stage](stage0_data/data_prep.py), [records/splits](dental/data.py), [renderer](dental/render.py) | Load or generate your own images, prompts, full targets and scoring references. Replace dental record generation and context grouping. |
-| Dataset handoff | [Identity and artifact helpers](common.py) | Write `train.jsonl`, `monitor.jsonl` and `test.jsonl`; preserve the dataset artifact and hash validation when replacing the data producer. |
-| SFT | [Training stage](stage1_sft/train.py), [collator](dental/sft_data.py), [monitoring](dental/sft.py) | Reuse image/prompt/target training for this Parse architecture. Replace dental monitor metrics and any reference fields they read. |
-| RL candidates and curriculum | [RLVR stage](stage2_rlvr/train.py), [selection](dental/curriculum.py) | Supply candidates from your domain; adapt context grouping, split exclusion and difficulty selection to your scoring criteria. The default stage generates fresh dental candidates. |
-| RLVR reward | [Reward environment](dental/environment.py), [data processor](dental/rl_data.py), [trainer wiring](dental/rlvr.py) | Pass task references in scoring metadata, implement your reward, and connect the environment/data processor to training. |
-| Evaluation | [Prediction and scoring](dental/evaluate.py), [metrics](dental/metrics.py), [summary](common.py), [eval stage](stage3_eval/evaluate.py) | Retain checkpoint loading, saved answers and matched evaluation; replace dental correctness/component metrics and their summary fields. |
+| Data preparation | [Data stage](stage0_data/data_prep.py), [records/splits](dental/data.py), [renderer](dental/render.py) | Develop or load your domain's images, prompts, full targets and scoring references. Define context groups and independent splits. |
+| Dataset handoff | [Identity and artifact helpers](common.py), [manifest reader](training/data.py) | Write `train.jsonl`, `monitor.jsonl` and `test.jsonl`; preserve dataset identity checks when replacing the data producer. |
+| SFT monitoring | [Shared trainer](training/sft.py), [collator](training/sft_data.py), [dental task](dental/task.py) | Reuse Parse image/prompt/target training. Implement your task's `monitor` callback with its own metrics, or use `task=null` for loss-only validation. |
+| RL candidates and curriculum | [RLVR stage](stage2_rlvr/train.py), [dental task](dental/task.py), [selection](dental/curriculum.py) | Implement candidate creation and selection using your scoring criteria; exclude all fixed dataset contexts. |
+| RLVR reward | [Dental reward environment](dental/environment.py), [shared data processor](training/rl_data.py), [shared trainer](training/rlvr.py) | Implement your domain's reward environment and select it through `task.environment_class`. The shared processor passes reference metadata without interpreting it. |
+| Evaluation | [Dental prediction/scoring/summary](dental/evaluate.py), [metrics](dental/metrics.py), [eval stage](stage3_eval/evaluate.py) | Develop your own correctness criteria, component metrics and reports. Use them in task evaluation during RLVR and adapt the standalone evaluation example consistently. |
+
+`nemotron parse data` and `nemotron parse eval` remain dental reference stages;
+they do not accept the training stages' `task` override. Adapt these stages for
+your domain alongside the task's monitoring, reward and evaluation hooks.
 
 Prepare the three fixed manifests and dataset artifact through your adapted data
-stage, then pass its directory to SFT, RLVR and evaluation. The identity checks
-expect unique page IDs, disjoint context IDs across fixed splits, and unchanged
-manifest/image bytes. Keep variants from the same source family in one split.
-The dental `record` schema is a reference implementation; new domains should
-define their own labels and update the code that consumes them together.
-Curriculum selection also recomputes context IDs from dental record fields;
-adapt that grouping function along with the IDs stored in your manifests.
+stage. The identity checks expect unique page IDs, disjoint context IDs across
+fixed splits, and unchanged manifest/image bytes. Keep variants from the same
+source family in one split. The shared training modules do not require a dental
+`record`: define the labels consumed by your task and reward environment.
+The dental curriculum recomputes context IDs from dental record fields; your
+selection hook must enforce the corresponding exclusions for your own schema.
 
 The SFT collator trains on `image`, `prompt` and `target`. Its token alignment
-and masking are specific to this Parse architecture and can be reused without
-retaining dental field semantics. The surrounding SFT monitoring path still
-reads dental references, so adapt that path even if you only intend to run SFT.
-Keep prompts consistent with those references: the current SFT monitor requires
-one shared prompt within each batch, and the RL data processor checks prompts
-against the configured [prompt file](dental/prompt.txt). If your task changes
-the prompt, update these consumers and the RL configuration together.
+and masking are specific to this Parse architecture. The shared greedy generation
+helper requires one prompt per monitor batch, and the RL processor checks each
+row's prompt against `task.prompt_file`. Update prompts and scoring references
+together when defining a new task.
 
 Choose evaluation metrics before defining the RLVR reward. The optional
 [document scorers](document_rewards/README.md) cover transcription, boxes,
-tables, charts and completion. Extract and match the relevant components from
-predictions and references before using those scorers. Connect your chosen
-metrics to both saved-answer evaluation and the reward environment, and keep
-individual metrics visible when combining them into a scalar reward.
+tables, charts and completion. They are reference building blocks: customers
+must choose extraction/matching rules, tolerances, thresholds and reward weights
+for their use cases. Connect these decisions to both saved-answer evaluation
+and the reward environment, and report individual metrics alongside any scalar
+reward. The dental reward does not establish correctness for other domains.
 
-After adapting the data and task components, use the same SFT/RLVR/eval stage
-workflow and artifact handoffs. Check complete target lengths, image dimensions
-and generation limits for your documents. First validate a small run and saved
-checkpoint reload, then evaluate SFT and RLVR on the same independently held-out
-pages. The dental defaults, sample counts and results below are a reference
-example; validate training settings and quality for your own domain.
+After implementing the data and task components, use the shared SFT/RLVR stages
+and artifact handoffs. Check complete target lengths, image dimensions and
+generation limits for your documents. Start with a small run and saved-checkpoint
+reload, then compare SFT and RLVR on the same independent held-out pages using
+your domain's evaluation. The dental settings and results below illustrate the
+reference example.
 
 ## SFT, RLVR and artifact flow
 
@@ -184,6 +190,9 @@ under `mining/`, `before/` and `after/`, plus `evaluation.json`. No external
 tracking service is required.
 
 ## Evaluation and dental example results
+
+These reward and evaluation definitions are specific to the dental example.
+Develop your own definitions for other document types and use cases.
 
 The bundled example's reward is binary: exact tooth/procedure/surface content
 and zero normalized visible-text CER. Reported sampled success also requires natural EOS.

@@ -8,7 +8,11 @@ and component measurements. A reference of `None` means that component is not
 annotated/applicable; its score is `None`. Invalid generated structures score
 zero. Invalid reference tables/charts raise an error so they can be corrected.
 
-The included dental example uses its exact-page content reward. These functions
+Evaluation and reward design are domain dependent, just like data preparation.
+Customers should develop the correctness criteria, matching rules, thresholds
+and reward composition needed for their use cases.
+
+The included dental reference example uses its exact-page content reward. These functions
 are building blocks for other task definitions; their weighting is independent
 of reported exact-match accuracy. See the
 [domain adaptation guide](../README.md#adapt-the-example-to-your-domain) for the
@@ -38,10 +42,12 @@ empty content have different meanings; preserve that distinction.
 
 Adapt the example's [evaluation metrics](../dental/metrics.py),
 [saved-answer scoring](../dental/evaluate.py) and
-[summary fields](../common.py) to report your chosen components. To use them
+[summary fields](../dental/evaluate.py) to report your chosen components. To use them
 for RLVR, also adapt the [reward environment](../dental/environment.py) and its
-reference metadata. The CLI has no switch that automatically replaces these
-dental implementations with the scorers below. Validate your evaluation first,
+reference metadata. Connect these implementations through your
+[training task adapter](../training/README.md) and adapt the standalone evaluation
+example as well. Selecting a task does not automatically compose these scorers.
+Validate your evaluation first,
 then evaluate any reward mixture under the same held-out protocol.
 
 ## Combine the scores

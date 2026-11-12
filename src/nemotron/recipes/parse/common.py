@@ -77,7 +77,7 @@ def model_from_artifact(path: Path) -> Path:
 
 def dataset_identity(directory: Path) -> dict:
     """Bind the three fixed splits to their actual manifests and image bytes."""
-    from nemotron.recipes.parse.dental.data import load_pages
+    from nemotron.recipes.parse.training.data import load_pages
 
     manifests, images, contexts, counts = {}, {}, {}, {}
     for name in ("train", "monitor", "test"):
@@ -93,7 +93,7 @@ def dataset_identity(directory: Path) -> dict:
             images[str(image.relative_to(directory.absolute()))] = sha256(image)
     for first, second in (("train", "monitor"), ("train", "test"), ("monitor", "test")):
         if not contexts[first].isdisjoint(contexts[second]):
-            raise ValueError(f"Patient context overlap: {first}, {second}")
+            raise ValueError(f"Dataset context overlap: {first}, {second}")
     return dict(manifests=manifests, images=images, pages=counts,
                 contexts={key: len(value) for key, value in contexts.items()})
 
@@ -127,17 +127,3 @@ class Progress:
             stream.write(json.dumps(event) + "\n")
         if phase != "train" or step % 32 == 0 or step == self.total:
             print(f"{self.stage}: {phase} {step}/{self.total} {json.dumps(metrics)}", flush=True)
-
-
-def summarize(answers: list[dict]) -> dict:
-    from nemotron.recipes.parse.dental.evaluate import pass_at_k
-
-    counts = [len(group["answers"]) for group in answers]
-    if not counts or min(counts) == 0 or len(set(counts)) != 1:
-        raise ValueError("Evaluation requires equal, nonzero sample counts per page")
-    flattened = [answer for group in answers for answer in group["answers"]]
-    keys = ("text_cer", "chart_exact", "patient_fields", "history_rows", "ended")
-    return dict(pages=len(answers), answers=len(flattened), samples=counts[0],
-                correct=sum(answer["correct"] for answer in flattened),
-                pass_at_k={str(k): pass_at_k(answers, k) for k in (1, 2, 4, 8) if k <= counts[0]},
-                metrics={key: sum(a[key] for a in flattened) / len(flattened) for key in keys})

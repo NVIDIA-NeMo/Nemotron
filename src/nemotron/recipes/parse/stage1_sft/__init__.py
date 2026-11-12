@@ -1,1 +1,1 @@
-"""Full-model supervised fine-tuning of complete dental pages."""
+"""Full-model supervised fine-tuning of complete Parse pages."""

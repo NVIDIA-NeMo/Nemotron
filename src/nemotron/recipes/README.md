@@ -19,7 +19,7 @@ Recipes are complete training pipelines that take you from raw data to a fully t
 | [evaluator](./evaluator/) | Pre-built evaluation configs for Nemotron models using NeMo Evaluator | Available |
 | [embed](../../../docs/nemotron/embed/index.md) | Text and multimodal embedding adaptation, evaluation, and deployment | Available |
 | [rerank](../../../docs/nemotron/rerank/index.md) | Text and multimodal reranker adaptation, evaluation, and deployment | Available |
-| [parse](./parse/README.md) | Parse model adaptation with SFT, RLVR and evaluation; dental data preparation example | v1 (H200) |
+| [parse](./parse/README.md) | Shared Parse SFT/RLVR training; dental reference data preparation, rewards and evaluation | v1 (H200) |
 | chipnemo | ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation) | Planned |
 
 For Parse, follow its [runtime setup](./parse/runtime/README.md) and

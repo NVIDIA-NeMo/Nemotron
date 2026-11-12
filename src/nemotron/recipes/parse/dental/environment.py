@@ -1,4 +1,4 @@
-"""Exact-page reward, with independently logged component measurements."""
+"""Dental reference reward, with independently logged component measurements."""
 
 import json
 from pathlib import Path

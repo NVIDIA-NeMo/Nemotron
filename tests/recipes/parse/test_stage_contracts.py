@@ -11,11 +11,13 @@ import pytest
 
 from nemotron.recipes.parse import RECIPE_VERSION, common
 from nemotron.recipes.parse.config import DataConfig, EvalConfig, RLVRConfig, SFTConfig
-from nemotron.recipes.parse.dental import config as dental_config
-from nemotron.recipes.parse.dental import data, evaluate, model, rlvr
+from nemotron.recipes.parse.dental import data, evaluate
 from nemotron.recipes.parse.stage1_sft import train as sft_stage
 from nemotron.recipes.parse.stage2_rlvr import train as rlvr_stage
 from nemotron.recipes.parse.stage3_eval import evaluate as eval_stage
+from nemotron.recipes.parse.training import config as training_config
+from nemotron.recipes.parse.training import model, rlvr
+from nemotron.recipes.parse.training.data import load_pages
 
 
 @pytest.fixture
@@ -26,7 +28,9 @@ def dataset(tmp_path):
     for split in ("train", "monitor", "test"):
         image = f"images/{split}.png"
         (directory / image).write_bytes(f"unit fixture: {split}".encode())
-        row = dict(id=split, image=image, context_id=split, prompt="prompt", target="target", record={})
+        row = dict(
+            id=split, image=image, context_id=split, prompt="prompt", target="target", reference={"invoice_total": 17}
+        )
         (directory / f"{split}.jsonl").write_text(json.dumps(row) + "\n")
     common.artifact(directory, "parse/dataset", directory, identity=common.dataset_identity(directory))
     return directory
@@ -63,9 +67,26 @@ def test_stage_failure_is_recorded_and_cannot_silently_replay(tmp_path):
             pytest.fail("Failed outputs must not be replayed")
 
 
-def test_sft_runs_greedy_baseline_and_collate_before_training(dataset, tmp_path, monkeypatch):
+@pytest.mark.parametrize("task_kind", ["dental", "custom", "none"])
+def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkeypatch, task_kind):
     calls = []
     cfg = SFTConfig(data_dir=dataset, output_dir=tmp_path / "sft", model="local-base")
+    if task_kind != "dental":
+        for name in list(sys.modules):
+            if name.startswith("nemotron.recipes.parse.dental"):
+                monkeypatch.setitem(sys.modules, name, None)
+
+        def monitor(model, processor, rows):
+            return rows, {"invoice_exact": 1.0}
+
+        monkeypatch.setitem(
+            sys.modules,
+            "invoice_task",
+            SimpleNamespace(
+                Task=lambda: SimpleNamespace(monitor=monitor),
+            ),
+        )
+        cfg.task = "invoice_task.Task" if task_kind == "custom" else None
 
     def prepare(checkpoint, output, scope):
         calls.append(("prepare", checkpoint, scope))
@@ -100,7 +121,13 @@ def test_sft_runs_greedy_baseline_and_collate_before_training(dataset, tmp_path,
 
     trainer = Trainer()
 
-    def make_trainer(config, observer):
+    def make_trainer(config, observer, *, monitor):
+        if task_kind == "none":
+            assert monitor is None
+        elif task_kind == "custom":
+            assert monitor(None, None, [])[1] == {"invoice_exact": 1.0}
+        else:
+            assert callable(monitor)
         assert config["step_scheduler"]["max_steps"] == 2852
         calls.append("setup")
         return trainer
@@ -111,8 +138,8 @@ def test_sft_runs_greedy_baseline_and_collate_before_training(dataset, tmp_path,
         return {"labels": [Labels()]}
 
     monkeypatch.setattr(model, "prepare_model", prepare)
-    monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.dental.sft", SimpleNamespace(make_trainer=make_trainer))
-    monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.dental.sft_data", SimpleNamespace(collate=collate))
+    monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft", SimpleNamespace(make_trainer=make_trainer))
+    monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft_data", SimpleNamespace(collate=collate))
     result = sft_stage.main(cfg)
     assert calls == [("prepare", "local-base", "full"), "setup", "baseline", "log-baseline", "collate", "train"]
     artifact = json.loads(result.read_text())
@@ -121,7 +148,8 @@ def test_sft_runs_greedy_baseline_and_collate_before_training(dataset, tmp_path,
     assert common.validate_dataset(dataset)["pages"]["test"] == 1
 
 
-def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, tmp_path, monkeypatch):
+@pytest.mark.parametrize("task_kind", ["dental", "custom"])
+def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, tmp_path, monkeypatch, task_kind):
     from nemotron.recipes.parse.dental import curriculum
 
     calls = []
@@ -134,6 +162,8 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
     sft_output.mkdir()
     common.artifact(sft_output, "parse/model", checkpoint, processor_source=str(checkpoint))
     cfg = RLVRConfig(data_dir=dataset, sft_output=sft_output, output_dir=tmp_path / "rlvr")
+    expected_environment = "nemotron.recipes.parse.dental.environment.DentalEnvironment"
+    expected_reward_metric = "page_exact"
 
     def make_records(seed, contexts):
         assert (seed, contexts) == (31415, 512)
@@ -141,7 +171,9 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
 
     def save_pages(records, output, split):
         assert records == ["candidate fixture"] and split == "rl_candidates"
-        row = dict(id="candidate", image="images/candidate.png", record={})
+        row = dict(
+            id="candidate", image="images/candidate.png", context_id="candidate", reference={"invoice_total": 17}
+        )
         manifest = output / f"{split}.jsonl"
         manifest.write_text(json.dumps(row) + "\n")
         calls.append("generate-candidates")
@@ -155,6 +187,8 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         else:
             assert model_path == cfg.output_dir / "checkpoint-final"
         answer = dict(correct=True, ended=True, text_cer=0.0, chart_exact=1.0, patient_fields=1.0, history_rows=1.0)
+        if task_kind == "custom":
+            answer = dict(invoice_exact=1.0)
         return [dict(id=row["id"], answers=[dict(answer) for _ in range(samples)]) for row in rows]
 
     def select(candidates, answers, pages, seed, excluded):
@@ -169,7 +203,8 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         calls.append("prepare-decoder")
         return output
 
-    def load_config(path, model_path, data_dir, output):
+    def load_config(path, model_path, data_dir, output, *, prompt_file):
+        assert Path(prompt_file).name == "prompt.txt"
         assert data_dir == cfg.output_dir / "curriculum"
         monitor = json.loads((data_dir / "monitor.jsonl").read_text())
         selected = json.loads((data_dir / "rl_train.jsonl").read_text())
@@ -178,7 +213,9 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         assert selected["image"] == "images/candidate.png"
         return {"unit_test": "configuration"}
 
-    def train(config, observer):
+    def train(config, observer, *, environment_class, reward_metric):
+        assert environment_class == expected_environment
+        assert reward_metric == expected_reward_metric
         assert config == {"unit_test": "configuration"}
         calls.append("train")
         return cfg.output_dir / "checkpoint-final"
@@ -188,17 +225,46 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
     monkeypatch.setattr(evaluate, "evaluate_isolated", sample)
     monkeypatch.setattr(curriculum, "select_training_pages", select)
     monkeypatch.setattr(model, "prepare_model", prepare)
-    monkeypatch.setattr(dental_config, "rlvr_config", load_config)
+    monkeypatch.setattr(training_config, "rlvr_config", load_config)
     monkeypatch.setattr(rlvr, "train", train)
+    if task_kind == "custom":
+        prompt_file = tmp_path / "prompt.txt"
+        prompt_file.write_text("prompt")
+        expected_environment = "invoice_task.InvoiceEnvironment"
+        expected_reward_metric = "invoice_exact"
+        task = SimpleNamespace(
+            prompt_file=prompt_file,
+            environment_class=expected_environment,
+            reward_metric=expected_reward_metric,
+            create_candidates=lambda output, seed, contexts: load_pages(
+                save_pages(make_records(seed, contexts), output, "rl_candidates")
+            ),
+            select_candidates=select,
+            evaluate=sample,
+            summarize=lambda answers: dict(samples=len(answers[0]["answers"]), invoice_accuracy=1.0),
+        )
+        monkeypatch.setitem(sys.modules, "invoice_task", SimpleNamespace(Task=lambda: task))
+        cfg.task = "invoice_task.Task"
+        for name in list(sys.modules):
+            if name.startswith("nemotron.recipes.parse.dental"):
+                monkeypatch.setitem(sys.modules, name, None)
     result = rlvr_stage.main(cfg)
     assert calls == [
-        "generate-candidates", ("mining", 4), "select", ("before", 8), "prepare-decoder", "train", ("after", 8)
+        "generate-candidates",
+        ("mining", 4),
+        "select",
+        ("before", 8),
+        "prepare-decoder",
+        "train",
+        ("after", 8),
     ]
     assert common.dataset_identity(dataset) == fixed_before
     artifact = json.loads(result.read_text())
     assert artifact["processor_source"] == str(checkpoint)
     summary = json.loads(Path(artifact["evaluation"]).read_text())
     assert summary["before"]["samples"] == summary["after"]["samples"] == 8
+    if task_kind == "custom":
+        assert summary["before"]["invoice_accuracy"] == summary["after"]["invoice_accuracy"] == 1.0
 
 
 def test_isolated_eval_worker_receives_recipe_path_and_native_sampler(tmp_path, monkeypatch):
@@ -224,7 +290,7 @@ def test_isolated_eval_worker_receives_recipe_path_and_native_sampler(tmp_path, 
     assert runtime["py_executable"] == sys.executable
     assert runtime["env_vars"]["VLLM_USE_FLASHINFER_SAMPLER"] == "0"
     paths = runtime["env_vars"]["PYTHONPATH"].split(os.pathsep)
-    assert paths[0] == str(Path(dental_config.__file__).resolve().parents[4])
+    assert paths[0] == str(Path(training_config.__file__).resolve().parents[4])
     assert paths[1:] == ["/existing/site-packages", "/another/path"]
 
 
@@ -237,9 +303,7 @@ def test_standalone_eval_publishes_directory_artifact_with_model_processor(datas
     processor.mkdir()
     model_output = tmp_path / "rlvr"
     model_output.mkdir()
-    model_artifact = common.artifact(
-        model_output, "parse/model", checkpoint, processor_source=str(processor)
-    )
+    model_artifact = common.artifact(model_output, "parse/model", checkpoint, processor_source=str(processor))
     cfg = EvalConfig(data_dir=dataset, model_artifact=model_artifact, output_dir=tmp_path / "evaluation")
 
     def sample(model_path, rows, output, samples, processor_source):
