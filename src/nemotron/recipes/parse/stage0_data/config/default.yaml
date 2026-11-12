@@ -1,0 +1,3 @@
+runtime_dir: .nemotron/parse-runtime
+data_dir: .nemotron/parse/data
+seed: 42

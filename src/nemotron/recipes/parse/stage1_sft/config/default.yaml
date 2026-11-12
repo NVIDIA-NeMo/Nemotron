@@ -1,0 +1,6 @@
+runtime_dir: .nemotron/parse-runtime
+data_dir: .nemotron/parse/data
+output_dir: .nemotron/parse/sft
+model: nvidia/Nemotron-3.5-Parse
+training: {}
+task: nemotron.recipes.parse.dental.task.DentalTask

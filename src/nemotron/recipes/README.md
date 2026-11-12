@@ -19,11 +19,17 @@ Recipes are complete training pipelines that take you from raw data to a fully t
 | [evaluator](./evaluator/) | Pre-built evaluation configs for Nemotron models using NeMo Evaluator | Available |
 | [embed](../../../docs/nemotron/embed/index.md) | Text and multimodal embedding adaptation, evaluation, and deployment | Available |
 | [rerank](../../../docs/nemotron/rerank/index.md) | Text and multimodal reranker adaptation, evaluation, and deployment | Available |
+| [parse](./parse/README.md) | Shared Parse SFT/RLVR training; dental reference data preparation, rewards and evaluation | v1 (H200) |
 | chipnemo | ChipNeMo/ScaleRTL (Domain-adapted for RTL code generation) | Planned |
+
+For Parse, follow its [runtime setup](./parse/runtime/README.md) and
+[recipe commands](./parse/README.md#run-the-dental-worked-example). It runs
+directly with an isolated runtime and local stage artifacts. The prerequisites
+and quick start below apply to the Nano3 NeMo-Run and W&B example.
 
 ## Prerequisites (v0)
 
-> **Slurm Only**: This initial release has been tested exclusively with Slurm execution. Support for additional NeMo-Run executors (local, Docker, SkyPilot, DGX Cloud) is planned for future releases.
+> **Nano3 example**: The following quick start uses a Slurm executor through NeMo-Run. Follow each recipe's guide for its execution requirements.
 
 - **Slurm cluster**: GPU nodes (H100 recommended)
 - **Weights & Biases**: Required for experiment tracking and artifact lineage

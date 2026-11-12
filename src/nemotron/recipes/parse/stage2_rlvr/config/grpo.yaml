@@ -1,0 +1,118 @@
+# Overrides on the pinned native NeMo RL VLM GRPO example.
+grpo:
+  max_num_steps: 128
+  max_num_epochs: 8
+  num_prompts_per_step: 16
+  num_generations_per_prompt: 4
+  seed: 1231031
+  normalize_rewards: true
+  use_leave_one_out_baseline: false
+  overlong_filtering: true
+  deduplicate_multimodal_data: true
+  val_at_start: true
+  val_at_end: true
+  val_period: 128
+  max_val_samples: 32
+  val_batch_size: 8
+  val_num_generations_per_prompt: 1
+loss_fn:
+  ratio_clip_min: 0.2
+  ratio_clip_max: 0.2
+  reference_policy_kl_penalty: 0.1
+  reference_policy_kl_type: k3
+policy:
+  model_name: ${model_path}
+  hf_config_overrides:
+    parse_train_scope: decoder
+  precision: bfloat16
+  train_global_batch_size: 64
+  train_micro_batch_size: 8
+  logprob_batch_size: 16
+  max_total_sequence_length: 4096
+  dynamic_batching:
+    enabled: false
+  sequence_packing:
+    enabled: false
+  automodel_cfg:
+    enabled: true
+    tensor_parallel_size: 1
+    context_parallel_size: 1
+    sequence_parallel: false
+    activation_checkpointing: false
+    automodel_kwargs:
+      force_hf: true
+      use_liger_kernel: false
+      use_sdpa_patching: true
+    checkpoint:
+      save_consolidated: every
+      model_save_format: safetensors
+  optimizer:
+    name: torch.optim.AdamW
+    kwargs:
+      lr: 1.0e-6
+      weight_decay: 0.0
+  scheduler:
+    - name: torch.optim.lr_scheduler.ConstantLR
+      kwargs:
+        factor: 1.0
+        total_iters: 1000000
+    - milestones: []
+  generation:
+    max_new_tokens: 1536
+    temperature: 1.0
+    top_p: 1.0
+    top_k: null
+    val_temperature: 1.0
+    val_top_p: 1.0
+    val_top_k: null
+    stop_strings: []
+    colocated:
+      enabled: true
+    vllm_cfg:
+      load_format: auto
+      skip_tokenizer_init: false
+      enforce_eager: false
+      enable_prefix_caching: true
+      tensor_parallel_size: 1
+    vllm_kwargs:
+      kv_cache_memory_bytes: 4294967296
+      max_num_seqs: 64
+      max_num_batched_tokens: 4096
+      mm_processor_cache_gb: 0
+data:
+  num_workers: 0
+  train:
+    dataset_name: nemotron.recipes.parse.training.rl_data.ParsePages
+    data_path: ${data_dir}/rl_train.jsonl
+    split_validation_size: 0
+  validation:
+    dataset_name: nemotron.recipes.parse.training.rl_data.ParsePages
+    data_path: ${data_dir}/monitor.jsonl
+    split_validation_size: 0
+  default:
+    processor: parse_page
+    prompt_file: ${prompt_file}
+    env_name: parse-page
+env:
+  parse-page:
+    phase: train
+    metrics_file: ${output_dir}/train-components.jsonl
+  parse-page-validation:
+    phase: validation
+    metrics_file: ${output_dir}/validation-components.jsonl
+checkpointing:
+  enabled: true
+  checkpoint_dir: ${output_dir}/checkpoints
+  save_period: 128
+  keep_top_k: null
+  save_optimizer: true
+  metric_name: val:accuracy
+logger:
+  log_dir: ${output_dir}/logs
+  wandb_enabled: false
+  tensorboard_enabled: false
+  monitor_gpus: false
+  extra_backends: []
+cluster:
+  num_nodes: 1
+  gpus_per_node: 1

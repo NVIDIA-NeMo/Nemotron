@@ -1,0 +1,107 @@
+[
+  {
+    "record": {
+      "patient": {
+        "name": "Sora Tavin",
+        "patient_id": "DEMO-67337",
+        "dob": "1986-09-21",
+        "phone": "202-555-0111",
+        "address": "452 Example Avenue, Demo City"
+      },
+      "visit": {
+        "date": "2026-11-10",
+        "provider": "Dr Vale"
+      },
+      "medical_history": {
+        "allergies": "Penicillin",
+        "medications": "None listed"
+      },
+      "treatment_history": [
+        {
+          "date": "2025-04-05",
+          "tooth": 12,
+          "procedure": "filling",
+          "fee": "700.00"
+        },
+        {
+          "date": "2025-06-09",
+          "tooth": 22,
+          "procedure": "crown",
+          "fee": "730.00"
+        },
+        {
+          "date": "2025-04-10",
+          "tooth": 25,
+          "procedure": "crown",
+          "fee": "540.00"
+        }
+      ],
+      "odontogram": {
+        "numbering": "universal",
+        "annotations": [
+          {
+            "tooth": 14,
+            "procedure": "filling",
+            "status": "planned",
+            "surface": "M",
+            "mark": "solid"
+          },
+          {
+            "tooth": 17,
+            "procedure": "filling",
+            "status": "planned",
+            "surface": "MO",
+            "mark": "solid"
+          },
+          {
+            "tooth": 20,
+            "procedure": "extraction",
+            "status": "planned",
+            "surface": "-",
+            "mark": "cross"
+          },
+          {
+            "tooth": 23,
+            "procedure": "filling",
+            "status": "planned",
+            "surface": "I",
+            "mark": "solid"
+          },
+          {
+            "tooth": 30,
+            "procedure": "extraction",
+            "status": "planned",
+            "surface": "-",
+            "mark": "cross"
+          },
+          {
+            "tooth": 32,
+            "procedure": "filling",
+            "status": "planned",
+            "surface": "D",
+            "mark": "solid"
+          }
+        ]
+      },
+      "next_appointment": {
+        "date": "2026-11-24",
+        "provider": "Dr Vale",
+        "preference": "Morning"
+      },
+      "notes": "Confirm the charted plan at follow-up.",
+      "styles": {
+        "filling": "hatched",
+        "crown": "outline",
+        "extraction": "slash",
+        "root canal": "root-line"
+      },
+      "family": "paper-ledger",
+      "mirror": false,
+      "palette": {
+        "planned": "#246b8a",
+        "completed": "#7424a1"
+      }
+    },
+    "target": "<x_0.0215><y_0.0195>SYNTHETIC DENTAL RECORD<x_0.9785><y_0.0527><class_Page-header>\n\n<x_0.0215><y_0.0723>Patient: Sora Tavin    Record: DEMO-67337    DOB: 1986-09-21\nPhone: 202-555-0111    Visit: 2026-11-10    Clinician: Dr Vale\nAddress: 452 Example Avenue, Demo City<x_0.9785><y_0.1592><class_Text>\n\n<x_0.0215><y_0.1816><chart type=\"odontogram\">\ntitle: ODONTOGRAM / UNIVERSAL ADULT TEETH 1-32\nlegend[color]: items=All colored marks: planned procedures\nlegend[symbol]: items=shaded surfaces: filling ; cap outline: crown ; X: extraction ; root lines: root canal\nnote: Patient RIGHT / LEFT. M: toward midline; D: away from midline; B/F: cheek/lip; L: tongue; O/I: chewing/biting. Surfaces apply to fillings; - means whole-tooth procedure. Unmarked teeth omitted.\n\n| Tooth | Procedure | Surfaces |\n| --- | --- | --- |\n| 14 | filling | M |\n| 17 | filling | MO |\n| 20 | extraction | - |\n| 23 | filling | I |\n| 30 | extraction | - |\n| 32 | filling | D |\n</chart><x_0.6924><y_0.668><class_Chart>\n\n<x_0.7178><y_0.1865>MEDICAL HISTORY<x_0.9727><y_0.208><class_Section-header>\n\n<x_0.7178><y_0.2256>Allergies: Penicillin\nMedications: None listed<x_0.9727><y_0.415><class_Text>\n\n<x_0.7178><y_0.4502>FOLLOW-UP<x_0.9727><y_0.4717><class_Section-header>\n\n<x_0.7178><y_0.4854>Next visit: 2026-11-24\nClinician: Dr Vale\nPreference: Morning\nConfirm the charted plan at follow-up.<x_0.9717><y_0.9365><class_Text>\n\n<x_0.0283><y_0.6953>PRIOR VISIT LEDGER (SEPARATE FROM CHART)<x_0.6875><y_0.7168><class_Section-header>\n\n<x_0.0273><y_0.7266>\\begin{tabular}{llll}\nDate & Tooth & Procedure & Fee\\\\\n2025-04-05 & 12 & filling & 700.00\\\\\n2025-06-09 & 22 & crown & 730.00\\\\\n2025-04-10 & 25 & crown & 540.00\\\\\n\\end{tabular}<x_0.6875><y_0.9346><class_Table>\n\n<x_0.0215><y_0.9678>Fictional patient. Original synthetic artwork. Demonstration only.<x_0.9785><y_0.9893><class_Page-footer>"
+  }
+]

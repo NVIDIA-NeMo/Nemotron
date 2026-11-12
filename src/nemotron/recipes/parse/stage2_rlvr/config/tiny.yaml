@@ -1,0 +1,15 @@
+# Execution smoke profile only; not intended for quality comparisons.
+output_dir: .nemotron/parse/rlvr-tiny
+sft_output: .nemotron/parse/sft-tiny
+candidate_contexts: 16
+selection_pages: 16
+evaluation_samples: 1
+training:
+  grpo:
+    max_num_steps: 2
+    max_num_epochs: 2
+    val_period: 2
+    max_val_samples: 4
+  checkpointing:
+    save_period: 2
+task: nemotron.recipes.parse.dental.task.DentalTask

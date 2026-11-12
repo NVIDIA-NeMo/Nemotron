@@ -1,0 +1,7 @@
+runtime_dir: .nemotron/parse-runtime
+data_dir: .nemotron/parse/data
+output_dir: .nemotron/parse/eval
+model_artifact: .nemotron/parse/rlvr/artifact.json
+model: null
+processor_source: null
+samples: 8

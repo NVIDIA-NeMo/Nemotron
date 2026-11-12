@@ -1,0 +1,14 @@
+runtime_dir: .nemotron/parse-runtime
+data_dir: .nemotron/parse/data
+output_dir: .nemotron/parse/rlvr
+sft_output: .nemotron/parse/sft
+model: null
+processor_source: null
+candidate_seed: 31415
+candidate_contexts: 512
+selection_seed: 42
+selection_pages: 256
+mining_samples: 4
+evaluation_samples: 8
+training: {}
+task: nemotron.recipes.parse.dental.task.DentalTask
