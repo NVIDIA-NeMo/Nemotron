@@ -219,20 +219,24 @@ To evaluate a saved checkpoint separately:
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
-The complete dental example was validated on one H200, including SFT, RLVR and
-evaluation of the saved checkpoint. Standalone evaluation produced the same
-results as evaluation within the RLVR stage.
+The reference run used one H200 per stage and 256 fixed training pages. SFT used
+global/local batch size 4, seed 42 and 2,852 optimizer updates with the
+learning-rate schedule described above. RLVR continued the SFT checkpoint for
+128 updates with the default settings and seed 1231031. Both checkpoints were
+evaluated on the same 256 held-out pages with eight sampled answers per page.
+Standalone evaluation of the saved RLVR checkpoint reproduced its in-stage
+evaluation metrics.
 
-| Checkpoint | Sampled pass@1 | Mean text CER ↓ |
+| Checkpoint | Sampled pass@1 ↑ | Mean text CER ↓ |
 | --- | ---: | ---: |
-| SFT | 59.03% | 0.1954% |
-| RLVR | 76.76% | 0.1298% |
+| SFT | 90.38% | 0.0747% |
+| RLVR | 93.60% | 0.0650% |
 
-Both checkpoints were evaluated on the same 256 held-out pages with eight
-sampled answers per page. RLVR improved both metrics in this run. Quality and
-run-to-run variation depend on the data, training settings and runtime; measure
-adaptation quality on your domain's held-out data. Preserve runtime records and
-report both accuracy and error metrics when comparing checkpoints.
+RLVR improved sampled pass@1 by 3.22 percentage points and reduced mean text CER
+in this run. Quality and run-to-run variation depend on the data, training
+settings and runtime; measure adaptation quality on your domain's held-out data.
+Preserve runtime records and report both accuracy and error metrics when
+comparing checkpoints.
 The baseline preview uses greedy monitoring; it is not a matched base/SFT/RLVR
 benchmark on the held-out set.
 
