@@ -173,8 +173,16 @@ reference example.
 
 ## SFT, RLVR and artifact flow
 
-With the dental example defaults, SFT runs 2,852 updates with global/local batch
-size 1, seed 42 and the configured learning-rate schedule. RLVR generates 512
+With the dental example defaults, SFT runs 2,852 optimizer updates with global/local
+batch size 4 and seed 42. `max_steps: 2852` sets the training budget;
+`num_epochs: null` lets the scheduler derive enough epochs to reach it. The 256
+training pages give 64 updates per epoch, so training stops after 44 full epochs
+and 36 updates in epoch 45. The cosine learning-rate schedule uses
+`lr_decay_steps: 2852`, decaying from `3e-6` to `3e-7` with no warmup. When adapting
+the recipe to another dataset, tune the update budget and learning-rate schedule
+together; a fixed update count does not preserve the number of dataset passes.
+
+RLVR generates 512
 independent candidate contexts, samples four answers per candidate and selects 256 contexts. Candidate images
 and selected manifests live in the RLVR output's `curriculum/` directory, leaving
 the fixed dataset unchanged. GRPO runs 128 updates, with 16 prompts and four

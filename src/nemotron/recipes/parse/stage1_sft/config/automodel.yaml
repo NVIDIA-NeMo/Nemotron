@@ -2,9 +2,9 @@
 recipe: FinetuneRecipeForVLM
 seed: 42
 step_scheduler:
-  global_batch_size: 1
-  local_batch_size: 1
-  num_epochs: 12
+  global_batch_size: 4
+  local_batch_size: 4
+  num_epochs: null # Derive enough epochs to complete max_steps.
   max_steps: 2852
   ckpt_every_steps: 512
   save_checkpoint_every_epoch: false

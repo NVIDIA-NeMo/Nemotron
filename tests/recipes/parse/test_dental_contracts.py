@@ -88,7 +88,10 @@ def test_packaged_sft_config_resolves_explicit_stage_paths_from_any_cwd(tmp_path
     assert cfg["checkpoint"]["checkpoint_dir"] == str(tmp_path / "sft/checkpoints")
     assert cfg["dataset"]["_target_"] == "nemotron.recipes.parse.training.sft_data.make_dataset"
     assert cfg["step_scheduler"]["max_steps"] == 2852
-    assert cfg["step_scheduler"]["global_batch_size"] == 1
+    assert cfg["step_scheduler"]["global_batch_size"] == 4
+    assert cfg["step_scheduler"]["local_batch_size"] == 4
+    assert cfg["step_scheduler"]["num_epochs"] is None
+    assert cfg["lr_scheduler"]["lr_decay_steps"] == cfg["step_scheduler"]["max_steps"]
     assert cfg["optimizer"]["lr"] == 3e-6
 
 
