@@ -35,6 +35,7 @@ from nemotron.recipes.parse.config import RLVRConfig, worker_config
 def main(cfg: RLVRConfig | None = None):
     from nemotron.recipes.parse.training.config import rlvr_config
     from nemotron.recipes.parse.training.data import load_pages
+    from nemotron.recipes.parse.training.lineage import model_reference, read_lineage, verify_model
     from nemotron.recipes.parse.training.model import prepare_model
     from nemotron.recipes.parse.training.rlvr import train
     from nemotron.recipes.parse.training.task import load_task
@@ -42,8 +43,13 @@ def main(cfg: RLVRConfig | None = None):
     cfg = cfg or worker_config("rlvr")
     task = load_task(cfg.task, stage="rlvr")
     identity = validate_dataset(cfg.data_dir)
+    sft_artifact = cfg.sft_output / "artifact.json"
+    lineage = read_lineage(sft_artifact, "sft", identity)
     sft_model = Path(cfg.model) if cfg.model else model_from_artifact(cfg.sft_output / "artifact.json")
-    processor = Path(cfg.processor_source) if cfg.processor_source else sft_model
+    parent = lineage["models"]["sft"]
+    processor = Path(cfg.processor_source or parent["processor_source"])
+    if sft_model.resolve() != Path(parent["path"]) or processor.resolve() != Path(parent["processor_source"]):
+        raise ValueError("RLVR model and processor must match the SFT artifact's lineage")
     data = cfg.data_dir.absolute()
     monitoring, test = load_pages(data / "monitor.jsonl"), load_pages(data / "test.jsonl")
     with stage_run("rlvr", cfg.output_dir, cfg) as output:
@@ -87,14 +93,19 @@ def main(cfg: RLVRConfig | None = None):
             raise ValueError("Before/after evaluation must use the same ordered pages")
         summary = dict(before=task.summarize(before), after=task.summarize(after))
         write_json(output / "evaluation.json", summary)
+        for reference in lineage["models"].values():
+            verify_model(reference)
+        lineage["models"]["rlvr"] = model_reference(checkpoint, processor)
         result = artifact(
             output,
             "parse/model",
             checkpoint,
             stage="rlvr",
             sft_model=str(sft_model.absolute()),
+            sft_artifact=str(sft_artifact.resolve()),
+            lineage=lineage,
             dataset_manifests=identity["manifests"],
-            processor_source=str(processor.absolute()),
+            processor_source=str(processor.resolve()),
             evaluation=str(output / "evaluation.json"),
         )
         print(json.dumps(summary, indent=2), flush=True)

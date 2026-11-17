@@ -65,6 +65,13 @@ optional; reward computation uses NeMo RL's environment return contract.
 ## Reference data and evaluation stages
 
 `nemotron parse data` and `nemotron parse eval` remain dental reference stages.
+Default evaluation follows the recorded base/SFT/RLVR lineage and compares all
+three checkpoints with the same held-out data and generation/scoring protocol.
+The shared [lineage helpers](lineage.py) record and verify checkpoint and processor
+file hashes without interpreting domain labels. SFT records the configured base;
+RLVR requires that SFT artifact and propagates its lineage. Preserve the referenced
+model directories. Older artifacts without explicit lineage are not reconstructed.
+
 For another domain, adapt those producers and evaluators alongside your task.
 In particular, implement consistent correctness criteria in SFT monitoring,
 RLVR mining/evaluation, the reward environment and standalone evaluation.

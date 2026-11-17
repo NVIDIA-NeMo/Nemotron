@@ -4,10 +4,27 @@ import gc
 import hashlib
 import json
 import math
-from pathlib import Path
 import sys
-from .metrics import components, successful_answer
+from pathlib import Path
+
 from nemotron.recipes.parse.training.config import worker_env
+
+from .metrics import components, successful_answer
+
+
+def evaluation_protocol(samples=8):
+    """The shared dental scoring and generation contract for every checkpoint."""
+    return dict(
+        schema_version=1,
+        task="dental",
+        scorer_sha256=hashlib.sha256(Path(__file__).with_name("metrics.py").read_bytes()).hexdigest(),
+        generation=dict(n=samples, temperature=1.0, top_p=1.0, seed=1231031,
+                        max_tokens=1536, skip_special_tokens=False, repetition_penalty=1.0),
+        engine=dict(dtype="bfloat16", distributed_executor_backend="uni", max_model_len=4096,
+                    max_num_seqs=32, max_num_batched_tokens=4096, kv_cache_memory_bytes=4 * 1024**3,
+                    enforce_eager=True, enable_prefix_caching=False, limit_mm_per_prompt={"image": 1},
+                    generation_config="vllm"),
+    )
 
 
 def evaluation_key(model, rows, samples, processor_source=None):
@@ -19,14 +36,10 @@ def evaluation_key(model, rows, samples, processor_source=None):
     files += [Path(row["image"]) for row in rows]
     states = [(str(p.resolve()), p.stat().st_size, p.stat().st_mtime_ns) for p in files]
     payload = dict(
-        version=1,
+        version=2,
         files=sorted(set(states)),
         rows=[dict(row, image=str(Path(row["image"]).resolve())) for row in rows],
-        samples=samples,
-        temperature=1.0,
-        top_p=1.0,
-        seed=1231031,
-        max_tokens=1536,
+        protocol=evaluation_protocol(samples),
     )
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
@@ -42,8 +55,9 @@ def evaluate(model, rows, output, samples=8, processor_source=None):
 
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
+    protocol = evaluation_protocol(samples)
     (output / "request.json").write_text(
-        json.dumps({"key": evaluation_key(model, rows, samples, processor_source)})
+        json.dumps({"key": evaluation_key(model, rows, samples, processor_source), "protocol": protocol})
     )
     view = output / "model"
     view.mkdir()
@@ -68,16 +82,7 @@ def evaluate(model, rows, output, samples=8, processor_source=None):
     llm = LLM(
         model=str(view),
         trust_remote_code=True,
-        dtype="bfloat16",
-        distributed_executor_backend="uni",
-        max_model_len=4096,
-        max_num_seqs=32,
-        max_num_batched_tokens=4096,
-        kv_cache_memory_bytes=4 * 1024**3,
-        enforce_eager=True,
-        enable_prefix_caching=False,
-        limit_mm_per_prompt={"image": 1},
-        generation_config="vllm",
+        **protocol["engine"],
     )
     tokenizer = llm.get_tokenizer()
     requests = []
@@ -93,15 +98,7 @@ def evaluate(model, rows, output, samples=8, processor_source=None):
         )
     outputs = llm.generate(
         requests,
-        SamplingParams(
-            n=samples,
-            temperature=1.0,
-            top_p=1.0,
-            seed=1231031,
-            max_tokens=1536,
-            skip_special_tokens=False,
-            repetition_penalty=1.0,
-        ),
+        SamplingParams(**protocol["generation"]),
     )
     results = []
     for row, generated in zip(rows, outputs, strict=True):

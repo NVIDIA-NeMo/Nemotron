@@ -68,5 +68,5 @@ def rlvr(ctx: typer.Context) -> None:
 
 
 def evaluate(ctx: typer.Context) -> None:
-    """Evaluate a checkpoint on the fixed held-out dental pages."""
+    """Compare base, SFT and RLVR checkpoints on the held-out dental pages."""
     execute("eval", ctx)

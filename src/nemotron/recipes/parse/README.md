@@ -20,7 +20,7 @@ to your documents, labels and quality requirements.
 | `nemotron parse data` | Dental example record/rendering rules and seed | Images, full-page Parse targets, train/monitor/test manifests and dataset identity |
 | `nemotron parse sft` | Dataset artifact, base model and optional task monitor | Full-model SFT checkpoint and training/monitor history |
 | `nemotron parse rlvr` | Dataset and SFT model artifacts, task adapter and reward environment | Candidate mining, decoder GRPO checkpoint and task-defined evaluation before/after |
-| `nemotron parse eval` | Dental example dataset and a model artifact or checkpoint | Held-out answers and dental reference metrics |
+| `nemotron parse eval` | Dental example dataset and RLVR artifact with model lineage | Matched base → SFT → RLVR answers, dental metrics and uplift report |
 
 The [shared training modules](training/README.md) support the Parse architecture.
 They provide model integration, training orchestration and artifact flow; a
@@ -55,6 +55,10 @@ PARSE_RUN="$PWD/.nemotron/parse"
 "$PARSE_PYTHON" -m nemotron parse rlvr \
   runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
   sft_output="$PARSE_RUN/sft" output_dir="$PARSE_RUN/rlvr"
+
+"$PARSE_PYTHON" -m nemotron parse eval \
+  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
+  model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
 An editable Nemotron installation from this source checkout can use
@@ -64,8 +68,12 @@ commands do not support the NeMo-Run `--run` or `--batch` options.
 
 Default SFT downloads the pinned base-model revision
 `62cb1e4ba153d113ff64aaf2be6e068c377cf53c`. Supply `model=/absolute/checkpoint`
-to use an existing local snapshot. RLVR normally consumes `sft_output/artifact.json`;
-an explicit `model=/absolute/sft/checkpoint` overrides that handoff.
+to use an existing local snapshot, or `model=organization/parse-model` and optional
+`model_revision=revision` for another compatible Hub model. SFT records the
+resolved source, revision and model/processor file hashes. Evaluation uses this
+recorded base, including a custom base, rather than resolving a default again.
+RLVR consumes `sft_output/artifact.json`; any explicit model or processor override
+must match that artifact's lineage.
 
 Use a new output directory for each stage attempt. Completed or partial runs
 are preserved, and an existing output is rejected instead of silently retraining
@@ -197,6 +205,13 @@ contents remain unchanged by artifact publication. Training also writes `trainin
 under `mining/`, `before/` and `after/`, plus `evaluation.json`. No external
 tracking service is required.
 
+SFT artifacts include explicit base/SFT model lineage; RLVR adds its final
+checkpoint and a reference to the parent SFT artifact. Keep the referenced model
+and processor directories available and unchanged for comparison. The evaluator
+verifies their file hashes and the fixed dataset identity before generation.
+Artifacts without this lineage require a new training run; ancestry is not
+reconstructed from previous outputs.
+
 ## Evaluation and dental example results
 
 These reward and evaluation definitions are specific to the dental example.
@@ -211,7 +226,8 @@ metrics. A weighted general reward changes the objective and is not enabled.
 The matched comparison uses the same 256 held-out pages and eight answers per
 page, temperature 1.0, top-p 1.0 and seed 1231031. Sampled pass@1 estimates
 first-attempt success from those answers; it is not greedy monitor accuracy.
-To evaluate a saved checkpoint separately:
+The evaluation command compares the recorded base, SFT and RLVR checkpoints by
+default, using a separate generation worker for each model on one GPU:
 
 ```bash
 "$PARSE_PYTHON" -m nemotron parse eval \
@@ -219,26 +235,39 @@ To evaluate a saved checkpoint separately:
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
+Each checkpoint has its own `base/`, `sft/` or `rlvr/` subdirectory containing
+`predictions/answers.json` and `evaluation.json`. The top-level `evaluation.json`
+records all metrics, lineage, the shared generation/scoring protocol and uplift
+for base→SFT, SFT→RLVR and base→RLVR. `comparison.md` displays the scores and
+percentage-point changes. Positive pass@1 gain and positive CER reduction mean
+improvement; relative CER reduction is undefined when the starting CER is zero.
+No extra comparison flag is needed.
+
+For a single-checkpoint diagnostic, explicitly pass `model=/absolute/checkpoint`
+and, if needed, `processor_source=/absolute/processor`. That path evaluates only
+the selected model; the default artifact-based command produces the full report.
+
 The reference run used one H200 per stage and 256 fixed training pages. SFT used
 global/local batch size 4, seed 42 and 2,852 optimizer updates with the
 learning-rate schedule described above. RLVR continued the SFT checkpoint for
-128 updates with the default settings and seed 1231031. Both checkpoints were
-evaluated on the same 256 held-out pages with eight sampled answers per page.
-Standalone evaluation of the saved RLVR checkpoint reproduced its in-stage
-evaluation metrics.
+128 updates with the default settings and seed 1231031. The base, SFT and RLVR
+models were evaluated on the same 256 held-out pages with eight sampled answers
+per page.
 
 | Checkpoint | Sampled pass@1 ↑ | Mean text CER ↓ |
 | --- | ---: | ---: |
-| SFT | 90.38% | 0.0747% |
-| RLVR | 93.60% | 0.0650% |
+| Base | 0.00% | 45.5291% |
+| SFT | 95.85% | 0.0385% |
+| RLVR | 96.58% | 0.0278% |
 
-RLVR improved sampled pass@1 by 3.22 percentage points and reduced mean text CER
-in this run. Quality and run-to-run variation depend on the data, training
+In this dental reference run, SFT improved sampled pass@1 by 95.85 percentage
+points over the base model. RLVR added 0.73 percentage points and further reduced
+mean text CER. Quality and run-to-run variation depend on the data, training
 settings and runtime; measure adaptation quality on your domain's held-out data.
 Preserve runtime records and report both accuracy and error metrics when
 comparing checkpoints.
-The baseline preview uses greedy monitoring; it is not a matched base/SFT/RLVR
-benchmark on the held-out set.
+The initial SFT preview uses greedy monitoring. The final evaluation command
+provides the matched base/SFT/RLVR comparison on the held-out set.
 
 ## Verification and attribution
 

@@ -16,7 +16,9 @@
 
 """Run SFT with terminal progress and explicit artifacts."""
 
+import json
 import time
+from pathlib import Path
 
 from omegaconf import OmegaConf
 
@@ -27,6 +29,7 @@ from nemotron.recipes.parse.config import SFTConfig, worker_config
 def main(cfg: SFTConfig | None = None):
     from nemotron.recipes.parse.training.config import sft_config
     from nemotron.recipes.parse.training.data import load_pages
+    from nemotron.recipes.parse.training.lineage import model_reference, verify_model
     from nemotron.recipes.parse.training.model import prepare_model, sft_checkpoint
     from nemotron.recipes.parse.training.sft import make_trainer
     from nemotron.recipes.parse.training.sft_data import collate
@@ -36,9 +39,15 @@ def main(cfg: SFTConfig | None = None):
     task = load_task(cfg.task, stage="sft") if cfg.task is not None else None
     identity = validate_dataset(cfg.data_dir)
     with stage_run("sft", cfg.output_dir, cfg) as output:
-        model = prepare_model(cfg.model, output / "initial-model", scope="full")
+        model = prepare_model(cfg.model, output / "initial-model", scope="full", revision=cfg.model_revision)
+        source = json.loads((model / "model-source.json").read_text())
+        base = model_reference(source["checkpoint"], source["processor"],
+                               source=cfg.model, revision=source["revision"])
         raw = sft_config(cfg.training_config, model, cfg.data_dir, output)
         config = OmegaConf.to_container(OmegaConf.merge(raw, cfg.training), resolve=True)
+        for section in ("model", "processor"):
+            if Path(config[section]["pretrained_model_name_or_path"]).resolve() != model.resolve():
+                raise ValueError("Set the SFT model through model/model_revision so lineage matches training")
         write_json(output / "training-config.json", config)
         observer = Progress(output, "sft")
         trainer = make_trainer(config, observer=observer, monitor=task.monitor if task is not None else None)
@@ -50,14 +59,18 @@ def main(cfg: SFTConfig | None = None):
         trainer.started = time.monotonic()
         trainer.run_train_validation_loop()
         checkpoint = sft_checkpoint(output)
+        verify_model(base)
+        lineage = dict(schema_version=1, dataset_identity=identity,
+                       models=dict(base=base, sft=model_reference(checkpoint)))
         result = artifact(
             output,
             "parse/model",
             checkpoint,
             stage="sft",
             base_model=cfg.model,
+            lineage=lineage,
             dataset_manifests=identity["manifests"],
-            processor_source=str(checkpoint),
+            processor_source=str(checkpoint.resolve()),
         )
         print(f"SFT model: {result}", flush=True)
         return result

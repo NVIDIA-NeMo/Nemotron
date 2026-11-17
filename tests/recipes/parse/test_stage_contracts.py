@@ -18,6 +18,7 @@ from nemotron.recipes.parse.stage3_eval import evaluate as eval_stage
 from nemotron.recipes.parse.training import config as training_config
 from nemotron.recipes.parse.training import model, rlvr
 from nemotron.recipes.parse.training.data import load_pages
+from nemotron.recipes.parse.training.lineage import model_reference
 
 
 @pytest.fixture
@@ -88,8 +89,16 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
         )
         cfg.task = "invoice_task.Task" if task_kind == "custom" else None
 
-    def prepare(checkpoint, output, scope):
+    base = tmp_path / "configured-base"
+    base.mkdir()
+    (base / "config.json").write_text("{}")
+    (base / "model.safetensors").write_bytes(b"base fixture")
+
+    def prepare(checkpoint, output, scope, revision):
         calls.append(("prepare", checkpoint, scope))
+        output.mkdir()
+        (output / "model-source.json").write_text(json.dumps(dict(
+            checkpoint=str(base), processor=str(base), revision=revision)))
         return output
 
     class Trainer:
@@ -109,7 +118,10 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
         def run_train_validation_loop(self):
             assert self.baseline is False and self.started > 0
             calls.append("train")
-            (cfg.output_dir / "checkpoints/epoch_11_step_2851/model/consolidated").mkdir(parents=True)
+            checkpoint = cfg.output_dir / "checkpoints/epoch_11_step_2851/model/consolidated"
+            checkpoint.mkdir(parents=True)
+            (checkpoint / "config.json").write_text("{}")
+            (checkpoint / "model.safetensors").write_bytes(b"trained fixture")
 
     class Labels:
         def __ne__(self, other):
@@ -145,6 +157,8 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
     artifact = json.loads(result.read_text())
     assert artifact["path"].endswith("epoch_11_step_2851/model/consolidated")
     assert artifact["processor_source"] == artifact["path"]
+    assert artifact["lineage"]["models"]["base"]["path"] == str(base)
+    assert artifact["lineage"]["models"]["base"]["source"] == "local-base"
     assert common.validate_dataset(dataset)["pages"]["test"] == 1
 
 
@@ -160,7 +174,10 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
     (checkpoint / "model.safetensors").write_bytes(b"unit fixture")
     sft_output = tmp_path / "sft"
     sft_output.mkdir()
-    common.artifact(sft_output, "parse/model", checkpoint, processor_source=str(checkpoint))
+    lineage = dict(schema_version=1, dataset_identity=fixed_before,
+                   models=dict(base=model_reference(checkpoint), sft=model_reference(checkpoint)))
+    common.artifact(sft_output, "parse/model", checkpoint, stage="sft",
+                    processor_source=str(checkpoint), lineage=lineage)
     cfg = RLVRConfig(data_dir=dataset, sft_output=sft_output, output_dir=tmp_path / "rlvr")
     expected_environment = "nemotron.recipes.parse.dental.environment.DentalEnvironment"
     expected_reward_metric = "page_exact"
@@ -218,7 +235,11 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         assert reward_metric == expected_reward_metric
         assert config == {"unit_test": "configuration"}
         calls.append("train")
-        return cfg.output_dir / "checkpoint-final"
+        final = cfg.output_dir / "checkpoint-final"
+        final.mkdir()
+        (final / "config.json").write_text("{}")
+        (final / "model.safetensors").write_bytes(b"RL fixture")
+        return final
 
     monkeypatch.setattr(data, "make_records", make_records)
     monkeypatch.setattr(data, "save_pages", save_pages)
@@ -261,6 +282,9 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
     assert common.dataset_identity(dataset) == fixed_before
     artifact = json.loads(result.read_text())
     assert artifact["processor_source"] == str(checkpoint)
+    assert artifact["sft_artifact"] == str(sft_output / "artifact.json")
+    assert artifact["lineage"]["models"]["base"] == lineage["models"]["base"]
+    assert set(artifact["lineage"]["models"]) == {"base", "sft", "rlvr"}
     summary = json.loads(Path(artifact["evaluation"]).read_text())
     assert summary["before"]["samples"] == summary["after"]["samples"] == 8
     if task_kind == "custom":
@@ -294,7 +318,7 @@ def test_isolated_eval_worker_receives_recipe_path_and_native_sampler(tmp_path, 
     assert paths[1:] == ["/existing/site-packages", "/another/path"]
 
 
-def test_standalone_eval_publishes_directory_artifact_with_model_processor(dataset, tmp_path, monkeypatch):
+def test_explicit_single_model_eval_publishes_directory_artifact(dataset, tmp_path, monkeypatch):
     checkpoint = tmp_path / "rlvr-checkpoint"
     checkpoint.mkdir()
     (checkpoint / "config.json").write_text("{}")
@@ -303,8 +327,9 @@ def test_standalone_eval_publishes_directory_artifact_with_model_processor(datas
     processor.mkdir()
     model_output = tmp_path / "rlvr"
     model_output.mkdir()
-    model_artifact = common.artifact(model_output, "parse/model", checkpoint, processor_source=str(processor))
-    cfg = EvalConfig(data_dir=dataset, model_artifact=model_artifact, output_dir=tmp_path / "evaluation")
+    common.artifact(model_output, "parse/model", checkpoint, processor_source=str(processor))
+    cfg = EvalConfig(data_dir=dataset, model=str(checkpoint), processor_source=str(processor),
+                     output_dir=tmp_path / "evaluation")
 
     def sample(model_path, rows, output, samples, processor_source):
         assert model_path == checkpoint
@@ -334,3 +359,106 @@ def test_standalone_eval_publishes_directory_artifact_with_model_processor(datas
     assert summary["metrics"]["ended"] == 1.0
     assert receipt["status"] == "completed"
     assert receipt["recipe_version"] == handoff["recipe_version"] == RECIPE_VERSION
+
+
+@pytest.fixture
+def comparison_artifact(dataset, tmp_path):
+    models = {}
+    for name in ("base", "sft", "rlvr"):
+        path = tmp_path / f"custom-{name}"
+        path.mkdir()
+        (path / "config.json").write_text("{}")
+        (path / "tokenizer.json").write_text("{}")
+        (path / "model.safetensors").write_bytes(f"{name} weight fixture".encode())
+        models[name] = model_reference(path, source="customer/parse-base" if name == "base" else None)
+    output = tmp_path / "rlvr-artifact"
+    output.mkdir()
+    lineage = dict(schema_version=1, dataset_identity=common.dataset_identity(dataset), models=models)
+    return common.artifact(output, "parse/model", Path(models["rlvr"]["path"]), stage="rlvr",
+                           processor_source=models["rlvr"]["processor_source"], lineage=lineage)
+
+
+def test_default_eval_compares_actual_base_sft_rlvr(dataset, comparison_artifact, tmp_path, monkeypatch):
+    from nemotron.recipes.parse.dental import comparison
+
+    calls = []
+    source = json.loads(comparison_artifact.read_text())
+    before = comparison_artifact.read_bytes()
+
+    def sample(path, rows, output, samples, processor_source):
+        name = output.parent.name
+        calls.append(name)
+        reference = source["lineage"]["models"][name]
+        assert str(path) == reference["path"]
+        assert processor_source == reference["processor_source"]
+        assert [r["id"] for r in rows] == ["test"]
+        assert samples == 4
+        correct = {"base": 1, "sft": 2, "rlvr": 3}[name]
+        cer = {"base": 0.3, "sft": 0.1, "rlvr": 0.05}[name]
+        answers = [dict(id="test", answers=[dict(correct=i < correct, text_cer=cer, ended=True,
+                                                chart_exact=1.0, patient_fields=1.0, history_rows=1.0)
+                                            for i in range(samples)])]
+        output.mkdir()
+        (output / "answers.json").write_text(json.dumps(answers))
+        return answers
+
+    monkeypatch.setattr(comparison, "evaluate_isolated", sample)
+    cfg = EvalConfig(data_dir=dataset, model_artifact=comparison_artifact,
+                     output_dir=tmp_path / "comparison", samples=4)
+    result = eval_stage.main(cfg)
+    assert calls == ["base", "sft", "rlvr"]
+    assert comparison_artifact.read_bytes() == before
+    handoff = json.loads(result.read_text())
+    summary = json.loads((cfg.output_dir / "evaluation.json").read_text())
+    assert handoff["kind"] == "parse/evaluation" and handoff["lineage"] == source["lineage"]
+    assert summary["protocol"] == evaluate.evaluation_protocol(4)
+    assert summary["models"]["base"]["pass_at_k"]["1"] == 0.25
+    assert summary["models"]["rlvr"]["pass_at_k"]["1"] == 0.75
+    assert summary["uplift"]["base_to_rlvr"]["pass_at_1_gain_pp"] == 50
+    assert summary["uplift"]["base_to_sft"]["text_cer_reduction_pp"] == pytest.approx(20)
+    report = (cfg.output_dir / "comparison.md").read_text()
+    assert "| Base | 25.00% | 30.0000% |" in report
+    assert "| RLVR | 75.00% | 5.0000% |" in report
+    for name in calls:
+        assert (cfg.output_dir / name / "predictions/answers.json").is_file()
+        assert json.loads((cfg.output_dir / name / "evaluation.json").read_text()) == summary["models"][name]
+
+
+@pytest.mark.parametrize("problem", ["missing_lineage", "changed_base", "changed_processor", "different_dataset"])
+def test_comparison_rejects_incompatible_lineage_before_generation(
+    dataset, comparison_artifact, tmp_path, monkeypatch, problem
+):
+    from nemotron.recipes.parse.dental import comparison
+
+    record = json.loads(comparison_artifact.read_text())
+    if problem == "missing_lineage":
+        record.pop("lineage")
+    elif problem in ("changed_base", "changed_processor"):
+        reference = record["lineage"]["models"]["base"]
+        filename = "model.safetensors" if problem == "changed_base" else "tokenizer.json"
+        (Path(reference["path"]) / filename).write_bytes(b"changed")
+    else:
+        record["lineage"]["dataset_identity"]["manifests"]["test"] = "different-test-set"
+    comparison_artifact.write_text(json.dumps(record))
+    monkeypatch.setattr(comparison, "evaluate_isolated", lambda *a, **kw: pytest.fail("must reject before generation"))
+    cfg = EvalConfig(data_dir=dataset, model_artifact=comparison_artifact, output_dir=tmp_path / "comparison")
+    with pytest.raises(ValueError, match="lineage|changed|dataset"):
+        eval_stage.main(cfg)
+    assert not cfg.output_dir.exists()
+
+
+@pytest.mark.parametrize("problem", ["page_order", "sample_count"])
+def test_comparison_rejects_incomplete_answers(dataset, comparison_artifact, tmp_path, monkeypatch, problem):
+    from nemotron.recipes.parse.dental import comparison
+
+    def sample(path, rows, output, samples, processor_source):
+        answer = dict(correct=True, text_cer=0.0, ended=True, chart_exact=1.0, patient_fields=1.0, history_rows=1.0)
+        return [dict(id="wrong-page" if problem == "page_order" else "test",
+                     answers=[answer] * (samples - 1 if problem == "sample_count" else samples))]
+
+    monkeypatch.setattr(comparison, "evaluate_isolated", sample)
+    cfg = EvalConfig(data_dir=dataset, model_artifact=comparison_artifact, output_dir=tmp_path / "comparison")
+    with pytest.raises(ValueError, match="ordered|sample count"):
+        eval_stage.main(cfg)
+    assert not (cfg.output_dir / "artifact.json").exists()
+    assert json.loads((cfg.output_dir / "stage.json").read_text())["status"] == "failed"

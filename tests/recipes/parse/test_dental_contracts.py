@@ -110,6 +110,17 @@ def test_checkpoint_handoff_selects_latest_numeric_step(tmp_path):
     assert sft_checkpoint(tmp_path) == tmp_path / "checkpoints/epoch_1_step_10/model/consolidated"
 
 
+def test_tiny_rlvr_profile_schedules_at_least_one_validation_batch():
+    from omegaconf import OmegaConf
+
+    from nemotron.recipes.parse.config import load_config
+
+    defaults = OmegaConf.load(recipe_root() / "stage2_rlvr/config/grpo.yaml")
+    grpo = OmegaConf.merge(defaults, load_config("rlvr", "tiny").training).grpo
+    # NeMo RL computes a whole-number validation batch count; zero batches fail.
+    assert grpo.max_val_samples // grpo.val_batch_size >= 1
+
+
 def test_model_view_preserves_weights_and_rejects_changed_identity(tmp_path):
     checkpoint = tmp_path / "checkpoint"
     checkpoint.mkdir()

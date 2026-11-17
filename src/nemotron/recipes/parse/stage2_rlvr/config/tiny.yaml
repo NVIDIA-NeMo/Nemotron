@@ -10,6 +10,7 @@ training:
     max_num_epochs: 2
     val_period: 2
     max_val_samples: 4
+    val_batch_size: 4
   checkpointing:
     save_period: 2
 task: nemotron.recipes.parse.dental.task.DentalTask

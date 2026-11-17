@@ -26,6 +26,7 @@ class SFTConfig(StageConfig):
     task: str | None = "nemotron.recipes.parse.dental.task.DentalTask"
     output_dir: Path = Path(".nemotron/parse/sft")
     model: str = "nvidia/Nemotron-3.5-Parse"
+    model_revision: str | None = None
     training_config: Path = ROOT / "stage1_sft/config/automodel.yaml"
     training: dict[str, Any] = Field(default_factory=dict)
 

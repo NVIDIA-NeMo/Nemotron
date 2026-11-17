@@ -14,14 +14,13 @@
 # gpus_per_node = 1
 # ///
 
-"""Reference dental evaluation of a saved Parse checkpoint on held-out pages."""
+"""Compare the configured base, SFT and RLVR models on held-out dental pages."""
 
 import json
 from pathlib import Path
 
 from nemotron.recipes.parse.common import (
     artifact,
-    model_from_artifact,
     stage_run,
     validate_dataset,
     write_json,
@@ -30,15 +29,29 @@ from nemotron.recipes.parse.config import EvalConfig, worker_config
 
 
 def main(cfg: EvalConfig | None = None):
+    from nemotron.recipes.parse.dental.comparison import evaluate_comparison
     from nemotron.recipes.parse.dental.evaluate import evaluate_isolated, summarize
     from nemotron.recipes.parse.training.data import load_pages
+    from nemotron.recipes.parse.training.lineage import read_lineage
 
     cfg = cfg or worker_config("eval")
     identity = validate_dataset(cfg.data_dir)
-    model = Path(cfg.model) if cfg.model else model_from_artifact(cfg.model_artifact)
+    if cfg.model is None:
+        if cfg.processor_source is not None:
+            raise ValueError("Comparison uses processors recorded in lineage; do not override processor_source")
+        lineage = read_lineage(cfg.model_artifact, "rlvr", identity)
+        with stage_run("eval", cfg.output_dir, cfg) as output:
+            summary = evaluate_comparison(lineage, load_pages(cfg.data_dir / "test.jsonl"), output, cfg.samples)
+            result = artifact(output, "parse/evaluation", output,
+                              evaluation=str(output / "evaluation.json"),
+                              comparison=str(output / "comparison.md"),
+                              dataset_manifests=identity["manifests"],
+                              lineage=lineage)
+            print((output / "comparison.md").read_text(), flush=True)
+            return result
+    # An explicit local model remains useful for single-checkpoint diagnostics.
+    model = Path(cfg.model)
     processor = cfg.processor_source
-    if processor is None and cfg.model is None:
-        processor = json.loads(cfg.model_artifact.read_text())["processor_source"]
     with stage_run("eval", cfg.output_dir, cfg) as output:
         answers = evaluate_isolated(
             model,

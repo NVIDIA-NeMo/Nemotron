@@ -4,6 +4,9 @@ Adapt Nemotron 3.5 Parse to document extraction tasks with supervised fine-tunin
 (SFT), reinforcement learning with verifiable rewards (RLVR), and checkpoint
 evaluation. The recipe provides these stages through the Nemotron CLI, with
 explicit data and model artifacts and a dedicated training runtime.
+Default evaluation follows the training artifacts to compare the configured base
+model, SFT checkpoint and RLVR checkpoint on the same held-out pages, and reports
+the uplift at each stage.
 
 Dental forms provide reference implementations for data preparation, monitoring,
 rewards and evaluation. Customers should develop each of these for their own

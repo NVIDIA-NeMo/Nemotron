@@ -17,11 +17,27 @@ def sft_checkpoint(output):
     return max(checkpoints, key=lambda path: int(path.parents[1].name.rsplit("_", 1)[1]))
 
 
-def prepare_model(checkpoint, output, scope="full", processor_source=None):
-    if checkpoint == BASE_MODEL:
-        from huggingface_hub import snapshot_download
+def resolve_model(checkpoint, revision=None):
+    """Resolve the configured local checkpoint or Hub model before training."""
+    local = Path(checkpoint).expanduser()
+    if local.is_dir():
+        if revision is not None:
+            raise ValueError("model_revision applies to Hub models, not local checkpoints")
+        return local.resolve(), None
+    if local.is_absolute() or str(checkpoint).startswith((".", "~")):
+        raise FileNotFoundError(f"Model checkpoint does not exist: {checkpoint}")
+    if revision is None and checkpoint == BASE_MODEL:
+        revision = BASE_REVISION
+    from huggingface_hub import snapshot_download
 
-        checkpoint = snapshot_download(BASE_MODEL, revision=BASE_REVISION)
+    snapshot = Path(snapshot_download(str(checkpoint), revision=revision)).resolve()
+    resolved_revision = snapshot.name if snapshot.parent.name == "snapshots" else revision
+    return snapshot, resolved_revision
+
+
+def prepare_model(checkpoint, output, scope="full", processor_source=None, revision=None):
+    source = str(checkpoint)
+    checkpoint, resolved_revision = resolve_model(checkpoint, revision)
     checkpoint, output = Path(checkpoint).absolute(), Path(output).absolute()
     if scope not in ("full", "decoder"):
         raise ValueError("scope must be full or decoder")
@@ -30,6 +46,8 @@ def prepare_model(checkpoint, output, scope="full", processor_source=None):
         raise ValueError("This recipe requires causal visual-prefix Nemotron Parse 3.5")
     wrapper = Path(__file__).with_name("hf_parse.py")
     identity = dict(
+        source=source,
+        revision=resolved_revision,
         checkpoint=str(checkpoint.resolve()),
         processor=str(Path(processor_source or checkpoint).resolve()),
         scope=scope,
