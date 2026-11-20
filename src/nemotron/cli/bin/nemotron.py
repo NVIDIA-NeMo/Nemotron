@@ -124,6 +124,7 @@ def _register_groups() -> None:
         ("kit", "nemotron.cli.kit", "kit_app"),
         ("embed", "nemotron.cli.commands.embed", "embed_app"),
         ("rerank", "nemotron.cli.commands.rerank", "rerank_app"),
+        ("parse", "nemotron.cli.commands.parse", "parse_app"),
         ("steps", "nemotron.cli.commands.steps", "steps_app"),
     )
 

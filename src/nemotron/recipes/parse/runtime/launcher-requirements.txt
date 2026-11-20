@@ -1,0 +1,9 @@
+# Dependencies for `python -m nemotron parse ...` from the source checkout.
+# Do not install the root Nemotron dependency set into the training runtime:
+# its Transformers bounds and Torch overrides differ from the validated stack.
+typer>=0.12
+rich>=13
+pydantic>=2
+omegaconf>=2.3
+PyYAML>=6
+fsspec>=2024

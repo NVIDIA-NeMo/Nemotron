@@ -1,0 +1,104 @@
+diff --git a/nemo_rl/models/generation/vllm/vllm_worker.py b/nemo_rl/models/generation/vllm/vllm_worker.py
+--- a/nemo_rl/models/generation/vllm/vllm_worker.py
++++ b/nemo_rl/models/generation/vllm/vllm_worker.py
+@@ -501,16 +501,21 @@
+         self.py_executable = sys.executable
+ 
+         vllm_cfg = self.cfg["vllm_cfg"]
+-        _apply_vllm_patches(
+-            self.py_executable,
+-            extra_env_vars=extra_env_vars,
+-            nemotron_h_fp32_lm_head=vllm_nemotron_h_fp32_lm_head_enabled(vllm_cfg),
+-            require_moe_routed_experts_capture=bool(
+-                (self.cfg.get("vllm_kwargs") or {}).get(
+-                    "enable_return_routed_experts", False
+-                )
+-            ),
+-        )
++        # Parse 3.5 is native in vLLM 0.33 and needs no legacy model/executor patches.
++        architectures = AutoConfig.from_pretrained(
++            self.model_name, trust_remote_code=True
++        ).architectures or []
++        if "RadioMBartPrefixForCausalLM" not in architectures:
++            _apply_vllm_patches(
++                self.py_executable,
++                extra_env_vars=extra_env_vars,
++                nemotron_h_fp32_lm_head=vllm_nemotron_h_fp32_lm_head_enabled(vllm_cfg),
++                require_moe_routed_experts_capture=bool(
++                    (self.cfg.get("vllm_kwargs") or {}).get(
++                        "enable_return_routed_experts", False
++                    )
++                ),
++            )
+ 
+         # Skip model loading if we're not the model owner
+         if not self.is_model_owner:
+diff --git a/pyproject.toml b/pyproject.toml
+--- a/pyproject.toml
++++ b/pyproject.toml
+@@ -30,7 +30,7 @@
+   # 2.11.0) and resolves in its own uv conflict fork, so the base spec must admit
+   # both. The ceiling keeps the driver venv from drifting to a newer torch on a
+   # relock; it resolves to the highest allowed (2.13.0), matching vLLM.
+-  "torch>=2.11,<2.14",
++  "torch>=2.11,<2.15",
+   "triton; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+   "colored==2.2.3",
+   "ray[default]>=2.58.0",                                                                                # CVE mitigation
+@@ -54,7 +54,7 @@
+   "plotly",
+   "sympy>=1.14.0",
+   "pillow>=12.3.0",                                                                                      # Address CVE (Pillow 12.3.0)
+-  "torchvision>=0.26,<0.29",                                                                             # tracks the torch range above (0.26 <-> 2.11, 0.28 <-> 2.13)
++  "torchvision>=0.26,<0.30",                                                                             # tracks the torch range above (0.26 <-> 2.11, 0.28 <-> 2.13)
+   # torchaudio and torchcodec are NOT installed in the container image.
+   # Run tools/install_audio_deps.sh before using audio features or audio tests.
+   # Keep the base range compatible with every backend-specific pin (5.5.4 through
+@@ -64,7 +64,6 @@
+   "timm",
+   "open-clip-torch>=3.2.0",
+   "mlflow>=3.13.0",
+-  "nvidia-nvshmem-cu13>=3.6.5; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')", # for deep_ep build
+   "swanlab",
+   "pyzmq",
+   "soundfile>=0.13.1",
+@@ -90,7 +89,6 @@
+   # Headers for transformer-engine's no-build-isolation install, and the runtime floor for
+   # TE 2.18 fused-attention backward with 256-wide heads on SM 10.x (cuDNN >= 9.23.0 for
+   # bshd/sbhd, >= 9.25.0 for thd; see TE fused_attn.cpp). Keep equal to the override below.
+-  "nvidia-cudnn-cu13==9.26.0.51; sys_platform != 'darwin'",
+   # tilelang — required by fused DSA TileLang kernels on Blackwell and by the
+   # replacement Triton kernel mamba-ssm requires when Triton >= 3.4.0 on Hopper;
+   # see https://github.com/state-spaces/mamba/issues/640.
+@@ -345,18 +343,6 @@
+ nemo-lens = { git = "https://github.com/NVIDIA-NeMo/Lens.git", rev = "4d045c03186b90afdc815db46b671f6a21bc7e98" }
+ sglang = { git = "https://github.com/sgl-project/sglang.git", rev = "3003d70f680d41c59d1b7acbf65cb47795dfd19e", subdirectory = "python" }
+ # torch/torchvision/triton all come from the torch index in order to pick up aarch64 wheels
+-torch = [
+-  { index = "pytorch-cu130", marker = "sys_platform != 'darwin'" },
+-  { index = "pypi", marker = "sys_platform == 'darwin'" },
+-]
+-torchvision = [
+-  { index = "pytorch-cu130", marker = "sys_platform != 'darwin'" },
+-  { index = "pypi", marker = "sys_platform == 'darwin'" },
+-]
+-triton = [
+-  { index = "pytorch-cu130", marker = "sys_platform != 'darwin'" },
+-  { index = "pypi", marker = "sys_platform == 'darwin'" },
+-]
+ causal-conv1d = { git = "https://github.com/Dao-AILab/causal-conv1d", rev = "4f6ae4e26ae5fe8af9372f8d312ab25cc4595223" }
+ mamba-ssm = { git = "https://github.com/state-spaces/mamba.git", rev = "a14b1dff0454a3bc27d9eb31355dc01e4b2490ec" }
+ nv-grouped-gemm = { git = "https://github.com/fanshiqing/grouped_gemm", tag = "v1.1.4.post7" }
+@@ -449,5 +435,4 @@
+ override-dependencies = [
+   "transformer-engine[pytorch,core_cu13]==2.18.0",
+   "nvidia-cublas==13.5.1.27; sys_platform != 'darwin'",
+-  "nvidia-cudnn-cu13==9.26.0.51; sys_platform != 'darwin'",
+   "nvidia-cudnn-frontend==1.25.0 ; sys_platform == 'linux' and (platform_machine == 'x86_64' or platform_machine == 'aarch64')",
+@@ -456,6 +441,5 @@
+   # Keep NCCL shared with the isolated Dynamo environment across torch upgrades.
+   "nvidia-nccl-cu13==2.30.7",
+-  "nvidia-nvshmem-cu13>=3.6.5; sys_platform != 'darwin'",
+   "opencv-python-headless; sys_platform == 'never'",
+   "timm<=1.0.22",
+   "fastapi[standard]>=0.133.0,<0.137.0",
