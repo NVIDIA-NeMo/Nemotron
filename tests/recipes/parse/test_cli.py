@@ -360,3 +360,115 @@ def test_nested_readonly_mount_wins_over_writable_parent(monkeypatch, tmp_path):
     result = runner.invoke(app, ["parse", "data", "--run", "container", "--dry-run", "data_dir=/data/reports/output"])
     assert result.exit_code != 0
     assert "absolute and beneath a profile mount" in result.output
+
+
+@pytest.mark.parametrize("mounts", [["/work"], ["/data:/work", "/work/data"]])
+def test_anonymous_docker_volumes_cannot_carry_artifacts(monkeypatch, tmp_path, mounts):
+    profile = tmp_path / "env.toml"
+    profile.write_text('[container]\nexecutor="docker"\nmounts=' + json.dumps(mounts) + "\n")
+    monkeypatch.setenv("NEMOTRON_ENV_FILE", str(profile))
+    result = runner.invoke(app, ["parse", "data", "--run", "container", "--dry-run", "data_dir=/work/data"])
+    assert result.exit_code != 0
+    assert "absolute and beneath a profile mount" in result.output
+
+
+def test_remote_execution_rejects_an_unrelated_working_directory(monkeypatch, tmp_path):
+    from nemotron.cli.commands.parse import commands
+
+    profile = tmp_path / "env.toml"
+    profile.write_text('[container]\nexecutor="docker"\nmounts=["/data:/data"]\n')
+    monkeypatch.setenv("NEMOTRON_ENV_FILE", str(profile))
+    monkeypatch.chdir(tmp_path)
+    calls = []
+    monkeypatch.setattr(commands, "_execute_remote", lambda *args: calls.append(args))
+    result = runner.invoke(app, ["parse", "data", "--run", "container", "data_dir=/data/data"])
+    assert result.exit_code != 0
+    assert "Nemotron checkout root" in result.output
+    assert calls == []
+
+
+@pytest.mark.parametrize("stage,expected_gpus", [("data", 0), ("sft", 1), ("rlvr", 1), ("eval", 1)])
+def test_docker_inherits_stage_gpu_defaults(stage, expected_gpus, monkeypatch):
+    from types import SimpleNamespace
+
+    from nemo_run.core.execution import docker
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.execution import create_executor
+    from nemotron.cli.commands.parse.commands import metadata
+
+    spec = metadata(stage)
+    from nemo_runspec import parse
+
+    executor = create_executor(
+        env=OmegaConf.create({"executor": "docker", "runtime": "runc"}),
+        env_vars={},
+        packager=None,
+        default_image="parse:test",
+        script_resources=parse(spec.script_path).resources,
+    )
+    assert executor.num_gpus == expected_gpus
+    executor.experiment_id = "unit-test"
+    requests = []
+    client = SimpleNamespace(containers=SimpleNamespace(run=lambda *args, **kwargs: requests.append(kwargs)))
+    monkeypatch.setattr(docker, "ensure_network", lambda **kwargs: None)
+    docker.DockerContainer(name="stage", command=["true"], executor=executor, extra_env={}).run(client, "unit-test")
+    if expected_gpus:
+        assert requests[0]["device_requests"][0]["Count"] == expected_gpus
+    else:
+        assert "device_requests" not in requests[0]
+
+
+@pytest.mark.parametrize("relative", [False, True])
+def test_mounted_ignored_training_config_keeps_its_path(monkeypatch, tmp_path, relative):
+    import shutil
+    import subprocess
+    import tarfile
+
+    from omegaconf import OmegaConf
+
+    from nemo_runspec.packaging import CodePackager
+    from nemotron.cli.commands.parse import commands
+
+    repo = tmp_path / "checkout"
+    root = repo / "src/nemotron/recipes/parse"
+    shutil.copytree(commands.ROOT / "stage1_sft/config", root / "stage1_sft/config")
+    shutil.copyfile(commands.ROOT / "stage1_sft/train.py", root / "stage1_sft/train.py")
+    runner_path = repo / "src/nemotron/kit/run_uv.py"
+    runner_path.parent.mkdir(parents=True)
+    runner_path.write_text("# packaged runner fixture\n")
+    (repo / ".gitignore").write_text(".nemotron/\n")
+    subprocess.run(["git", "init", "--quiet", str(repo)], check=True)
+    run = repo / ".nemotron/parse"
+    run.mkdir(parents=True)
+    custom = run / "customer.yaml"
+    custom.write_text("policy: {}\n")
+    profile = tmp_path / "env.toml"
+    profile.write_text('[container]\nexecutor="docker"\nmounts=' + json.dumps([f"{run}:{run}"]) + "\n")
+    monkeypatch.setenv("NEMOTRON_ENV_FILE", str(profile))
+    monkeypatch.setattr(commands, "ROOT", root)
+    monkeypatch.chdir(repo)
+    job = tmp_path / "job"
+    monkeypatch.setattr("nemo_runspec.config.generate_job_dir", lambda *args: job)
+    captures = []
+    monkeypatch.setattr(commands, "_execute_remote", lambda spec, path, *args: captures.append(path))
+    argument = custom.relative_to(repo) if relative else custom
+    result = runner.invoke(
+        app,
+        [
+            "parse",
+            "sft",
+            "--run",
+            "container",
+            f"data_dir={run / 'data'}",
+            f"output_dir={run / 'sft'}",
+            f"training_config={argument}",
+        ],
+    )
+    assert result.exit_code == 0, result.exception
+    packager = CodePackager(script_path="src/nemotron/kit/run_uv.py", train_path=str(captures[0]))
+    archive = packager.package(repo, str(job), "stage")
+    with tarfile.open(archive) as bundle:
+        assert ".nemotron/parse/customer.yaml" not in bundle.getnames()
+        config = OmegaConf.create(bundle.extractfile("config.yaml").read().decode())
+    assert config.training_config == str(custom)

@@ -100,6 +100,10 @@ if you change the model.
 
 ## Configure Container Execution
 
+Run remote stage commands from the Nemotron checkout root. The CLI rejects
+other working directories before packaging to keep unrelated project files out
+of the job archive.
+
 The stage runspecs pin these prebuilt images by multiarchitecture index digest.
 Docker selects the pinned `linux/amd64` or `linux/arm64` image for the host:
 
@@ -172,6 +176,13 @@ mounts. Keep the same absolute paths inside and outside the container because
 artifacts record dataset, checkpoint, and processor paths. Output mounts must
 be writable. The CLI rejects relative or unmounted artifact paths before
 submission; packaged job directories do not provide persistent stage handoffs.
+Docker mounts used for artifacts must include an explicit source and destination,
+such as `/data:/data`. A destination-only mount creates an anonymous volume that
+is not shared between stage containers.
+
+Keep custom training YAML files on a mounted path and select them with an
+absolute `training_config` path. Mounted configurations retain that path even
+when they are stored in the checkout's Git-ignored run directory.
 
 Use one node and one task for Slurm profiles. Submit with `--run profile` for
 attached execution or `--batch profile` for detached execution, and wait for each

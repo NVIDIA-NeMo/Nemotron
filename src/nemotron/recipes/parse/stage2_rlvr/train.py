@@ -55,6 +55,14 @@ def main(cfg: RLVRConfig | None = None):
         # Mining manifests belong to this run, keeping the fixed dataset immutable.
         curriculum = output / "curriculum"
         curriculum.mkdir()
+        model = prepare_model(sft_model, output / "initial-model", scope="decoder", processor_source=processor)
+        config = rlvr_config(
+            cfg.training_config, model, curriculum, output, prompt_file=task.prompt_file, overrides=cfg.training
+        )
+        policy = config["policy"]
+        for name, value in (("model_name", policy["model_name"]), ("tokenizer.name", policy["tokenizer"]["name"])):
+            if Path(value).resolve() != model.resolve():
+                raise ValueError(f"RLVR policy.{name} must match the prepared SFT model so lineage matches training")
         candidates = task.create_candidates(curriculum, seed=cfg.candidate_seed, contexts=cfg.candidate_contexts)
         sampled = task.evaluate(
             sft_model, candidates, output / "mining", samples=cfg.mining_samples, processor_source=processor
@@ -74,10 +82,6 @@ def main(cfg: RLVRConfig | None = None):
         (curriculum / "monitor.jsonl").write_text("".join(json.dumps(row) + "\n" for row in monitoring))
         before = task.evaluate(
             sft_model, test, output / "before", samples=cfg.evaluation_samples, processor_source=processor
-        )
-        model = prepare_model(sft_model, output / "initial-model", scope="decoder", processor_source=processor)
-        config = rlvr_config(
-            cfg.training_config, model, curriculum, output, prompt_file=task.prompt_file, overrides=cfg.training
         )
         write_json(output / "training-config.json", config)
         checkpoint = train(

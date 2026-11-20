@@ -625,7 +625,7 @@ def create_executor(
     if executor_type == "local":
         return _create_local_executor(env, env_vars)
     if executor_type == "docker":
-        return _create_docker_executor(env, env_vars, packager, default_image)
+        return _create_docker_executor(env, env_vars, packager, default_image, script_resources)
     if executor_type == "slurm":
         return create_slurm_executor(
             env,
@@ -687,6 +687,7 @@ def _create_docker_executor(
     env_vars: dict[str, str],
     packager: Any,
     default_image: str | None,
+    script_resources: Any | None = None,
 ) -> Any:
     """DockerExecutor with env-var-expanded, path-resolved host mounts."""
     import nemo_run as run
@@ -697,6 +698,12 @@ def _create_docker_executor(
 
     resolved_mounts = resolve_docker_mounts(_get_env(env, "mounts") or [])
 
+    num_gpus = _get_env(env, "gpus_per_node")
+    if num_gpus is None:
+        num_gpus = _get_env(env, "nproc_per_node")
+    if num_gpus is None and script_resources is not None:
+        num_gpus = script_resources.gpus_per_node
+
     # NeMo-Run pipes commands through tee. Bash must retain the command's
     # failure status rather than reporting tee's successful exit.
     env_vars = dict(env_vars)
@@ -705,7 +712,7 @@ def _create_docker_executor(
     env_vars["SHELLOPTS"] = ":".join(dict.fromkeys([opt for opt in options if opt] + ["pipefail"]))
     return run.DockerExecutor(
         container_image=container_image,
-        num_gpus=_get_env(env, "gpus_per_node") or _get_env(env, "nproc_per_node"),
+        num_gpus=num_gpus,
         runtime=_get_env(env, "runtime", "nvidia"),
         ipc_mode=_get_env(env, "ipc_mode"),
         shm_size=_get_env(env, "shm_size"),

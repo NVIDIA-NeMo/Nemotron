@@ -156,6 +156,12 @@ applies `training.*` overrides and artifact paths before resolving interpolation
 Keep task changes in a separate override file rather than editing the upstream
 snapshots.
 
+Use `data_dir` to select the SFT dataset bundle. The effective training and
+validation manifests must match its `train.jsonl` and `monitor.jsonl` paths.
+Use `sft_output` to select the RLVR parent checkpoint. Policy and tokenizer
+overrides must retain the prepared SFT model so that training matches the
+recorded lineage. The stage checks these settings before candidate generation.
+
 Each stage writes `config.json`, `stage.json` and an explicit `artifact.json`
 handoff. Nemotron Artifact metadata is saved in the stage output bundle, with
 `payload_path` pointing to the dataset, checkpoint or evaluation output. Checkpoint

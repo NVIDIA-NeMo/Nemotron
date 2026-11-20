@@ -49,6 +49,10 @@ def main(cfg: SFTConfig | None = None):
         for section in ("model", "processor"):
             if Path(config[section]["pretrained_model_name_or_path"]).resolve() != model.resolve():
                 raise ValueError("Set the SFT model through model/model_revision so lineage matches training")
+        for section, split in (("dataset", "train"), ("validation_dataset", "monitor")):
+            path = config.get(section, {}).get("path")
+            if path is None or Path(path).resolve() != (cfg.data_dir / f"{split}.jsonl").resolve():
+                raise ValueError(f"Set SFT data through data_dir; {section}.path must match the dataset artifact")
         write_json(output / "training-config.json", config)
         observer = Progress(output, "sft")
         trainer = make_trainer(config, observer=observer, monitor=task.monitor if task is not None else None)
@@ -61,8 +65,9 @@ def main(cfg: SFTConfig | None = None):
         trainer.run_train_validation_loop()
         checkpoint = sft_checkpoint(output)
         verify_model(base)
-        lineage = dict(schema_version=1, dataset_identity=identity,
-                       models=dict(base=base, sft=model_reference(checkpoint)))
+        lineage = dict(
+            schema_version=1, dataset_identity=identity, models=dict(base=base, sft=model_reference(checkpoint))
+        )
         result = artifact(
             output,
             "parse/model",

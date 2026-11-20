@@ -67,11 +67,9 @@ def execute(stage: str, ctx: typer.Context) -> None:
     if not local:
         if executor not in {"docker", "slurm"}:
             raise typer.BadParameter("Parse supports local uv, Docker, and single-task Slurm execution.")
+        if Path.cwd().resolve() != repo.resolve():
+            raise typer.BadParameter(f"Run remote Parse stages from the Nemotron checkout root: {repo}")
         _validate_remote_paths(payload, env, stage)
-        if "training_config" in payload:
-            path = Path(payload["training_config"])
-            if path.is_relative_to(repo):
-                payload["training_config"] = str(path.relative_to(repo))
         if executor == "slurm":
             env["nodes"] = env["ntasks_per_node"] = 1
         if executor == "docker" and stage in {"rlvr", "eval"}:
@@ -131,6 +129,7 @@ def _validate_remote_paths(payload: dict[str, Any], env: DictConfig, stage: str)
             (
                 Path(os.path.normpath(parts[1] if len(parts) > 1 else parts[0])),
                 any("ro" in option.split(",") for option in parts[2:]),
+                env.get("executor") != "docker" or (len(parts) > 1 and bool(parts[0])),
             )
         )
     fields = ["data_dir"]
@@ -145,10 +144,31 @@ def _validate_remote_paths(payload: dict[str, Any], env: DictConfig, stage: str)
         path = Path(training)
         source = path if path.is_absolute() else Path.cwd() / path
         source = Path(os.path.normpath(source))
-        if source.is_relative_to(ROOT.parents[3]) and source.is_file():
-            payload["training_config"] = str(source.relative_to(ROOT.parents[3]))
-        else:
+        # Mounted files keep their container path even when they are inside
+        # the checkout: ignored run artifacts are not in the code archive.
+        matching = [
+            (len(root.parts), index, persistent)
+            for index, (root, _, persistent) in enumerate(destinations)
+            if source.is_relative_to(root)
+        ]
+        if matching and max(matching)[2]:
+            payload["training_config"] = str(source)
             fields.append("training_config")
+        else:
+            from nemo_runspec.packaging import CodePackager
+
+            repo = ROOT.parents[3]
+            packager = CodePackager(script_path="src/nemotron/kit/run_uv.py", train_path=str(source))
+            relative = source.relative_to(repo) if source.is_relative_to(repo) else None
+            if (
+                relative is not None
+                and source.is_file()
+                and not packager._is_excluded(relative)
+                and relative in packager._iter_repo_paths(repo)
+            ):
+                payload["training_config"] = str(relative)
+            else:
+                fields.append("training_config")
     model = payload.get("model")
     if stage != "eval" and model is not None:
         path = Path(model)
@@ -161,11 +181,11 @@ def _validate_remote_paths(payload: dict[str, Any], env: DictConfig, stage: str)
         path = Path(os.path.normpath(payload[name]))
         writes = name == "output_dir" or (stage == "data" and name == "data_dir")
         matching = [
-            (len(root.parts), index, readonly)
-            for index, (root, readonly) in enumerate(destinations)
+            (len(root.parts), index, readonly, persistent)
+            for index, (root, readonly, persistent) in enumerate(destinations)
             if path.is_relative_to(root)
         ]
-        if not path.is_absolute() or not matching or (writes and max(matching)[2]):
+        if not path.is_absolute() or not matching or not max(matching)[3] or (writes and max(matching)[2]):
             raise typer.BadParameter(
                 f"Remote {name} must be absolute and beneath a profile mount: {path}. "
                 "See docs/nemotron/parse/runtime.md."
