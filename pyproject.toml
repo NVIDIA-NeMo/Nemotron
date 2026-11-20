@@ -23,6 +23,8 @@ classifiers = [
 
 dependencies = [
     "nemo-run @ git+https://github.com/NVIDIA-NeMo/Run.git@a8425c9f11a45412e6d5338cecb1c014b0ecc0c4",
+    # This NeMo-Run revision imports API v1 modules removed in Lepton 0.46.0.
+    "leptonai<0.46.0",
     "pydantic>=2.0.0",
     "typer>=0.12.0",
     "omegaconf>=2.3.0",

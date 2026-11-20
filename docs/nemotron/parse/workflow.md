@@ -4,7 +4,7 @@ Use this recipe as a starting point to adapt
 [Nemotron 3.5 Parse](https://huggingface.co/nvidia/Nemotron-3.5-Parse) to your
 document domain through supervised fine-tuning (SFT), reinforcement learning
 with verifiable rewards (RLVR), and held-out evaluation. It provides stage
-commands, a model adapter, an isolated runtime and explicit dataset/checkpoint
+commands, a model adapter, stage-specific environments and explicit dataset/checkpoint
 handoffs.
 
 **Data preparation, rewards and evaluation are dental reference examples.**
@@ -30,42 +30,36 @@ your domain's evaluation and reward functions.
 
 ## Runtime
 
-Use the dedicated Parse runtime to keep training and evaluation dependencies
-separate from the main Nemotron environment. Follow the
-[runtime setup guide](runtime.md) to install it from a Nemotron source
-checkout on Linux with your GPU visible, then run the commands below.
+Use local uv environments or prebuilt containers to keep stage dependencies
+separate from the Nemotron CLI environment. Follow the
+[execution setup guide](runtime.md), then run the commands below.
 
 ## Run the dental worked example
 
-After completing runtime setup, run these commands from the repository root.
-They execute the dental example with its default data and scoring.
+After installing and activating the Nemotron CLI, run these commands from the
+repository root. They execute the dental example with its default data and scoring.
 
 ```bash
-export PYTHONPATH="$PWD/src"
-PARSE_RUNTIME="$PWD/.nemotron/parse-runtime"
-PARSE_PYTHON="$PARSE_RUNTIME/venv/bin/python"
 PARSE_RUN="$PWD/.nemotron/parse"
 
-"$PARSE_PYTHON" -m nemotron parse data \
-  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data"
+nemotron parse data data_dir="$PARSE_RUN/data"
 
-"$PARSE_PYTHON" -m nemotron parse sft \
-  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
+nemotron parse sft data_dir="$PARSE_RUN/data" \
   output_dir="$PARSE_RUN/sft"
 
-"$PARSE_PYTHON" -m nemotron parse rlvr \
-  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
+nemotron parse rlvr data_dir="$PARSE_RUN/data" \
   sft_output="$PARSE_RUN/sft" output_dir="$PARSE_RUN/rlvr"
 
-"$PARSE_PYTHON" -m nemotron parse eval \
-  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
+nemotron parse eval data_dir="$PARSE_RUN/data" \
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 
-An editable Nemotron installation from this source checkout can use
-`nemotron parse ...` with the same arguments. Each command runs directly in a
-separate runtime process and releases GPU resources when it exits. The v1
-commands do not support the NeMo-Run `--run` or `--batch` options.
+Each local command selects its stage's locked uv environment. To use prebuilt
+containers, add `--run parse-docker` after configuring the
+[Docker profile](runtime.md#configure-container-execution). Container and Slurm
+artifact paths must be absolute and beneath persistent profile mounts. Keep one
+node, one task, and one GPU per stage; unsupported resource profiles fail before
+submission. Profiles with `executor = "local"` select local uv execution.
 
 Default SFT downloads the pinned base-model revision
 `62cb1e4ba153d113ff64aaf2be6e068c377cf53c`. Supply `model=/absolute/checkpoint`
@@ -80,7 +74,7 @@ Use a new output directory for each stage attempt. Completed or partial runs
 are preserved, and an existing output is rejected instead of silently retraining
 or resuming. This version does not implement optimizer-state resume.
 
-Preview a configuration without installing the GPU runtime:
+Preview a configuration without installing stage dependencies:
 
 ```bash
 nemotron parse sft --dry-run
@@ -147,6 +141,27 @@ with `-c`. For example,
 `training.step_scheduler.max_steps=128` changes the SFT update budget; keep
 `training.lr_scheduler.lr_decay_steps` aligned with that budget.
 
+RLVR loads the file selected by `training_config`, which defaults to
+`stage2_rlvr/config/grpo.yaml`. Its `defaults` field inherits the bundled
+`vlm_grpo_3B.yaml`, which inherits `grpo_math_1B.yaml`. These two files are
+unchanged snapshots from NeMo RL revision
+`b0b7dd5597c4bc5c9a728d6d31e2058c698b7423`, matching the original recipe.
+Parse-specific settings remain in `grpo.yaml`, including replacement of the
+upstream reward environments through `env._override_: true`.
+
+A custom `training_config` without `defaults` inherits the bundled VLM
+configuration and replaces the Parse overrides. If you include `defaults`,
+NeMo RL resolves parent paths relative to that configuration file. The stage
+applies `training.*` overrides and artifact paths before resolving interpolations.
+Keep task changes in a separate override file rather than editing the upstream
+snapshots.
+
+Use `data_dir` to select the SFT dataset bundle. The effective training and
+validation manifests must match its `train.jsonl` and `monitor.jsonl` paths.
+Use `sft_output` to select the RLVR parent checkpoint. Policy and tokenizer
+overrides must retain the prepared SFT model so that training matches the
+recorded lineage. The stage checks these settings before candidate generation.
+
 Each stage writes `config.json`, `stage.json` and an explicit `artifact.json`
 handoff. Nemotron Artifact metadata is saved in the stage output bundle, with
 `payload_path` pointing to the dataset, checkpoint or evaluation output. Checkpoint
@@ -180,8 +195,7 @@ The evaluation command compares the recorded base, SFT and RLVR checkpoints by
 default, using a separate generation worker for each model on one GPU:
 
 ```bash
-"$PARSE_PYTHON" -m nemotron parse eval \
-  runtime_dir="$PARSE_RUNTIME" data_dir="$PARSE_RUN/data" \
+nemotron parse eval data_dir="$PARSE_RUN/data" \
   model_artifact="$PARSE_RUN/rlvr/artifact.json" output_dir="$PARSE_RUN/eval"
 ```
 

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import shutil
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -282,9 +285,69 @@ def test_execute_uv_local_from_spec_forwards_direct_launch_extras(monkeypatch) -
         passthrough=[],
         extra_with=["demo"],
         extras=["tensorrt"],
+        isolate_environment=True,
     )
 
     assert captured["repo_root"] == repo_root
     assert captured["extra_with"] == ["demo"]
     assert captured["extras"] == ["tensorrt"]
     assert captured["pre_script_args"] == []
+    assert captured["isolate_environment"] is True
+
+
+@pytest.mark.parametrize("isolate_environment", [False, True])
+def test_real_uv_project_environments_preserve_external_imports(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, isolate_environment: bool
+) -> None:
+    """Separate project dependencies while retaining customer task imports."""
+    if shutil.which("uv") is None:
+        pytest.skip("uv is required for the project-environment regression")
+
+    external = tmp_path / "external"
+    external.mkdir()
+    (external / "customer_task.py").write_text('VALUE = "customer module"\n')
+    ambient = tmp_path / "ambient"
+    monkeypatch.setenv("UV_PROJECT_ENVIRONMENT", str(ambient))
+    monkeypatch.setenv("UV_CACHE_DIR", str(tmp_path / "uv-cache"))
+    monkeypatch.setenv("UV_OFFLINE", "true")
+    monkeypatch.setenv("UV_PYTHON_DOWNLOADS", "never")
+    monkeypatch.setenv("UV_PYTHON", sys.executable)
+    monkeypatch.setenv("PYTHONPATH", str(external))
+
+    prefixes = []
+    for name in ["first", "second"]:
+        stage = tmp_path / name
+        stage.mkdir()
+        (stage / "pyproject.toml").write_text(
+            f'[project]\nname = "{name}"\nversion = "0.0.0"\ndependencies = []\n'
+            '[tool.uv]\npackage = false\n'
+        )
+        script = stage / "probe.py"
+        script.write_text(
+            "import json, sys, customer_task\n"
+            "from pathlib import Path\n"
+            "Path(sys.argv[2]).write_text(json.dumps({"
+            "'prefix': sys.prefix, 'task': customer_task.VALUE}))\n"
+        )
+        output = stage / "result.json"
+        with pytest.raises(typer.Exit) as outcome:
+            execution.execute_uv_local(
+                script_path=script,
+                stage_dir=stage,
+                repo_root=tmp_path,
+                train_path=output,
+                passthrough=[],
+                isolate_environment=isolate_environment,
+            )
+        assert outcome.value.exit_code == 0
+        result = json.loads(output.read_text())
+        assert result["task"] == "customer module"
+        prefixes.append(Path(result["prefix"]))
+
+    if isolate_environment:
+        assert prefixes[0] != prefixes[1]
+        assert ambient not in prefixes
+        assert not ambient.exists()
+    else:
+        # Keep existing embed/rerank callers' opt-in environment relocation.
+        assert prefixes == [ambient, ambient]

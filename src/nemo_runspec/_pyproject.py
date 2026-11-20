@@ -63,9 +63,7 @@ def _normalize_source_paths(value, stage_dir: Path):
     return normalized
 
 
-def _write_temp_pyproject(
-    pyproject_data: dict, stage_dir: Path, exclude_deps: list[str]
-) -> Path:
+def _write_temp_pyproject(pyproject_data: dict, stage_dir: Path, exclude_deps: list[str]) -> Path:
     """Write a temporary pyproject.toml with container exclude-dependencies."""
     temp_dir = Path(tempfile.mkdtemp())
     buf = io.StringIO()
@@ -106,13 +104,13 @@ def _write_temp_pyproject(
             continue
         buf.write(f"{key} = {_format_toml_value(value)}\n")
 
-    combined_exclude = list(
-        dict.fromkeys([*uv.get("exclude-dependencies", []), *exclude_deps])
-    )
-    buf.write("exclude-dependencies = [\n")
-    for dep in combined_exclude:
-        buf.write(f'  "{dep}",\n')
-    buf.write("]\n\n")
+    combined_exclude = list(dict.fromkeys([*uv.get("exclude-dependencies", []), *exclude_deps]))
+    if combined_exclude:
+        buf.write("exclude-dependencies = [\n")
+        for dep in combined_exclude:
+            buf.write(f'  "{dep}",\n')
+        buf.write("]\n")
+    buf.write("\n")
 
     # [tool.uv.sources] — convert relative paths to absolute
     if "sources" in uv:

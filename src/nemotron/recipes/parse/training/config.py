@@ -32,20 +32,21 @@ def sft_config(path, model, data, output):
     return resolved
 
 
-def rlvr_config(path, model, data, output, *, prompt_file):
-    import nemo_rl
+def rlvr_config(path, model, data, output, *, prompt_file, overrides=None):
     from nemo_rl.utils.config import load_config, register_omegaconf_resolvers
     from omegaconf import OmegaConf
 
     register_omegaconf_resolvers()
-    # Inherit native algorithm defaults from the pinned framework checkout.
-    native = Path(nemo_rl.__file__).parent.parent / "examples/configs/vlm_grpo_3B.yaml"
-    if not native.is_file():
-        raise FileNotFoundError("Install the pinned NeMo RL source checkout, including examples/configs")
-    overrides = OmegaConf.load(path)
-    config = OmegaConf.merge(load_config(native), overrides)
-    # The upstream example defines unrelated tasks; this recipe has two envs.
-    config.env = overrides.env
+    selected = OmegaConf.load(path)
+    if "defaults" in selected:
+        config = load_config(path)
+    else:
+        # Preserve custom override files that omit an explicit parent.
+        defaults = load_config(recipe_root() / "stage2_rlvr/config/vlm_grpo_3B.yaml")
+        defaults.env = {}
+        config = OmegaConf.merge(defaults, selected)
+    # Resolve only after user overrides and artifact paths have been supplied.
+    config = OmegaConf.merge(config, overrides or {})
     for name, value in dict(
         model_path=model,
         data_dir=data,

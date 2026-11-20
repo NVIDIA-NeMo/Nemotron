@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,7 +19,7 @@ from nemotron.recipes.parse.stage3_eval import evaluate as eval_stage
 from nemotron.recipes.parse.training import config as training_config
 from nemotron.recipes.parse.training import model, rlvr
 from nemotron.recipes.parse.training.data import load_pages
-from nemotron.recipes.parse.training.lineage import model_reference
+from nemotron.recipes.parse.training.lineage import model_reference, read_lineage
 
 
 @pytest.fixture
@@ -68,10 +69,15 @@ def test_stage_failure_is_recorded_and_cannot_silently_replay(tmp_path):
             pytest.fail("Failed outputs must not be replayed")
 
 
-@pytest.mark.parametrize("task_kind", ["dental", "custom", "none"])
-def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkeypatch, task_kind):
+@pytest.mark.parametrize("task_kind,data_override", [
+    ("dental", None), ("custom", None), ("none", None),
+    ("none", "dataset"), ("none", "validation_dataset"),
+])
+def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkeypatch, task_kind, data_override):
     calls = []
     cfg = SFTConfig(data_dir=dataset, output_dir=tmp_path / "sft", model="local-base")
+    if data_override:
+        cfg.training = {data_override: {"path": str(dataset / "test.jsonl")}}
     if task_kind != "dental":
         for name in list(sys.modules):
             if name.startswith("nemotron.recipes.parse.dental"):
@@ -94,7 +100,7 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
     (base / "config.json").write_text("{}")
     (base / "model.safetensors").write_bytes(b"base fixture")
 
-    def prepare(checkpoint, output, scope, revision):
+    def prepare(checkpoint, output, scope, revision=None):
         calls.append(("prepare", checkpoint, scope))
         output.mkdir()
         (output / "model-source.json").write_text(json.dumps(dict(
@@ -149,21 +155,36 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
         calls.append("collate")
         return {"labels": [Labels()]}
 
+    monkeypatch.setattr(model, "resolve_model", lambda checkpoint, revision: (base, "resolved-revision"))
     monkeypatch.setattr(model, "prepare_model", prepare)
     monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft", SimpleNamespace(make_trainer=make_trainer))
     monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft_data", SimpleNamespace(collate=collate))
+    if data_override:
+        with pytest.raises(ValueError, match="must match the dataset artifact"):
+            sft_stage.main(cfg)
+        assert "setup" not in calls
+        return
     result = sft_stage.main(cfg)
-    assert calls == [("prepare", "local-base", "full"), "setup", "baseline", "log-baseline", "collate", "train"]
+    persistent_base = cfg.output_dir / "base-model"
+    assert calls == [("prepare", persistent_base, "full"), "setup", "baseline", "log-baseline", "collate", "train"]
     artifact = json.loads(result.read_text())
     assert artifact["path"].endswith("epoch_11_step_2851/model/consolidated")
     assert artifact["processor_source"] == artifact["path"]
-    assert artifact["lineage"]["models"]["base"]["path"] == str(base)
+    assert artifact["lineage"]["models"]["base"]["path"] == str(persistent_base)
+    assert artifact["lineage"]["models"]["base"]["revision"] == "resolved-revision"
+    # Consuming the artifact must not require the original container/cache.
+    shutil.rmtree(base)
+    read_lineage(result, "sft", common.dataset_identity(dataset))
     assert artifact["lineage"]["models"]["base"]["source"] == "local-base"
     assert common.validate_dataset(dataset)["pages"]["test"] == 1
 
 
-@pytest.mark.parametrize("task_kind", ["dental", "custom"])
-def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, tmp_path, monkeypatch, task_kind):
+@pytest.mark.parametrize("task_kind,model_override", [
+    ("dental", None), ("custom", None), ("dental", "model_name"), ("dental", "tokenizer"),
+])
+def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(
+    dataset, tmp_path, monkeypatch, task_kind, model_override
+):
     from nemotron.recipes.parse.dental import curriculum
 
     calls = []
@@ -179,6 +200,9 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
     common.artifact(sft_output, "parse/model", checkpoint, stage="sft",
                     processor_source=str(checkpoint), lineage=lineage)
     cfg = RLVRConfig(data_dir=dataset, sft_output=sft_output, output_dir=tmp_path / "rlvr")
+    if model_override:
+        value = str(tmp_path / "different-weights")
+        cfg.training = {"policy": {model_override: {"name": value} if model_override == "tokenizer" else value}}
     expected_environment = "nemotron.recipes.parse.dental.environment.DentalEnvironment"
     expected_reward_metric = "page_exact"
 
@@ -220,20 +244,24 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         calls.append("prepare-decoder")
         return output
 
-    def load_config(path, model_path, data_dir, output, *, prompt_file):
+    def load_config(path, model_path, data_dir, output, *, prompt_file, overrides=None):
+        assert overrides == cfg.training
         assert Path(prompt_file).name == "prompt.txt"
         assert data_dir == cfg.output_dir / "curriculum"
-        monitor = json.loads((data_dir / "monitor.jsonl").read_text())
-        selected = json.loads((data_dir / "rl_train.jsonl").read_text())
-        assert Path(monitor["image"]).is_absolute()
-        assert monitor["image"] == str(dataset / "images/monitor.png")
-        assert selected["image"] == "images/candidate.png"
-        return {"unit_test": "configuration"}
+        assert not (data_dir / "monitor.jsonl").exists()  # Config is checked before mining.
+        policy = {"model_name": str(model_path), "tokenizer": {"name": str(model_path)}}
+        policy.update((overrides or {}).get("policy", {}))
+        return {"unit_test": "configuration", "policy": policy}
 
     def train(config, observer, *, environment_class, reward_metric):
         assert environment_class == expected_environment
         assert reward_metric == expected_reward_metric
-        assert config == {"unit_test": "configuration"}
+        assert config["unit_test"] == "configuration"
+        assert config["policy"]["model_name"] == str(cfg.output_dir / "initial-model")
+        monitor = json.loads((cfg.output_dir / "curriculum/monitor.jsonl").read_text())
+        selected = json.loads((cfg.output_dir / "curriculum/rl_train.jsonl").read_text())
+        assert monitor["image"] == str(dataset / "images/monitor.png")
+        assert selected["image"] == "images/candidate.png"
         calls.append("train")
         final = cfg.output_dir / "checkpoint-final"
         final.mkdir()
@@ -269,13 +297,18 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         for name in list(sys.modules):
             if name.startswith("nemotron.recipes.parse.dental"):
                 monkeypatch.setitem(sys.modules, name, None)
+    if model_override:
+        with pytest.raises(ValueError, match="must match the prepared SFT model"):
+            rlvr_stage.main(cfg)
+        assert calls == ["prepare-decoder"]
+        return
     result = rlvr_stage.main(cfg)
     assert calls == [
+        "prepare-decoder",
         "generate-candidates",
         ("mining", 4),
         "select",
         ("before", 8),
-        "prepare-decoder",
         "train",
         ("after", 8),
     ]

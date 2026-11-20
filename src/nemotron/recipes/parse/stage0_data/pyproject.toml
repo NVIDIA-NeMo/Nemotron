@@ -1,0 +1,24 @@
+[project]
+name = "nemotron-parse-stage0-data"
+version = "0.0.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13",
+  "pydantic>=2",
+  "omegaconf>=2.3",
+  "PyYAML>=6",
+  "fsspec>=2024",
+  "Pillow>=13",
+  "numpy>=1.24",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
+
+[tool.nemotron]
+container-mode = "isolated"
+entry-point = "data_prep.py"
+environment-name = "parse-stage0_data"
+container-exclude-dependencies = []

@@ -1,0 +1,29 @@
+[project]
+name = "nemotron-parse-stage1-sft"
+version = "0.0.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13",
+  "pydantic>=2",
+  "omegaconf>=2.3",
+  "fsspec>=2024",
+  "Pillow>=13",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
+  "torchao==0.18.0",
+  "transformers==5.18.0",
+  "nemo-automodel[vlm]==0.7.0",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
+
+[tool.nemotron]
+entry-point = "train.py"
+environment-name = "parse-stage1_sft"
+container-exclude-dependencies = [
+  "nemo-automodel", "transformers", "torch", "torchvision", "torchao",
+  "flash-attn", "triton", "quack-kernels", "timm",
+]

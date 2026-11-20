@@ -2,7 +2,8 @@
 # [tool.runspec]
 # schema = "1"
 # name = "parse/eval"
-# setup = "Use the isolated Parse runtime; see recipes/parse/README.md."
+# image = "vllm/vllm-openai:v0.33.0@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e"
+# setup = "Stage dependencies resolved with uv; see docs/nemotron/parse/environments.md."
 # [tool.runspec.run]
 # launch = "direct"
 # [tool.runspec.config]

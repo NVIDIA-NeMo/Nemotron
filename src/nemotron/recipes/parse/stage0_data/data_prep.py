@@ -2,7 +2,8 @@
 # [tool.runspec]
 # schema = "1"
 # name = "parse/data"
-# setup = "Use the isolated Parse runtime; see recipes/parse/README.md."
+# image = "ghcr.io/astral-sh/uv:0.8.22-python3.12-bookworm@sha256:347a10b34f9dd5a8ebb6378bc5f3ba2c003ea7e53d4f51a99a01728197c495e4"
+# setup = "Stage dependencies resolved with uv; see docs/nemotron/parse/environments.md."
 # [tool.runspec.run]
 # launch = "direct"
 # [tool.runspec.config]

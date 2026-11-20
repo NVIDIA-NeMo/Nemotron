@@ -1,0 +1,32 @@
+[project]
+name = "nemotron-parse-stage3-eval"
+version = "0.0.0"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13",
+  "pydantic>=2",
+  "omegaconf>=2.3",
+  "PyYAML>=6",
+  "fsspec>=2024",
+  "vllm==0.33.0",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
+  "transformers==5.16.1",
+  "Pillow>=13",
+  "ray[default]>=2.60,<3",
+  "setuptools<81",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
+
+[tool.nemotron]
+entry-point = "evaluate.py"
+environment-name = "parse-stage3_eval"
+container-exclude-dependencies = ["vllm", "torch", "torchvision", "torchaudio", "torchao", "triton", "numpy"]
+
+[tool.nemotron.container-requires]
+torch = "==2.14.0"
+vllm = "==0.33.0"

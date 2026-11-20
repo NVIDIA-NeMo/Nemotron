@@ -38,6 +38,7 @@ class CodePackager(Packager):
 
     script_path: str
     train_path: str
+    exit_code_file: str | None = None
     exclude_dirs: tuple[str, ...] = ("usage-cookbook", "use-case-examples")
 
     def package(self, path: Path, job_dir: str, name: str) -> str:
@@ -88,6 +89,14 @@ class CodePackager(Packager):
 
         rel_script = script_file.relative_to(repo_root)
 
+        completion = ""
+        if self.exit_code_file:
+            if Path(self.exit_code_file).name != self.exit_code_file:
+                raise ValueError("exit_code_file must be a filename")
+            completion = (
+                "with open(os.path.join(ROOT, " + repr(self.exit_code_file) + "), 'w') as stream:\n"
+                "    stream.write(str(result.returncode))\n"
+            )
         # The launcher runs in the extracted package root.
         # Change working directory to ROOT so ${oc.env:PWD} resolves correctly.
         # Always run script in subprocess to ensure clean Python environment.
@@ -103,12 +112,12 @@ class CodePackager(Packager):
             "script_path = os.path.join(ROOT, " + repr(rel_script.as_posix()) + ")\n"
             "config_path = os.path.join(ROOT, 'config.yaml')\n"
             "env = os.environ.copy()\n"
-            "env['PYTHONPATH'] = os.pathsep.join([ROOT, os.path.join(ROOT, 'src')]) + os.pathsep + env.get('PYTHONPATH', '')\n"
+            "env['PYTHONPATH'] = os.pathsep.join([ROOT, os.path.join(ROOT, 'src')])"
+            " + os.pathsep + env.get('PYTHONPATH', '')\n"
             "result = subprocess.run(\n"
             "    [sys.executable, script_path, '--config', config_path] + sys.argv[1:],\n"
             "    env=env,\n"
-            ")\n"
-            "sys.exit(result.returncode)\n"
+            ")\n" + completion + "sys.exit(result.returncode)\n"
         )
 
     def _iter_repo_paths(self, repo_root: Path):

@@ -1,4 +1,9 @@
-# Overrides on the pinned native NeMo RL VLM GRPO example.
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES.
+# SPDX-License-Identifier: Apache-2.0
+# Parse overrides of the bundled NeMo RL configuration hierarchy.
+# Upstream snapshots: b0b7dd5597c4bc5c9a728d6d31e2058c698b7423.
+defaults: vlm_grpo_3B.yaml
+
 grpo:
   max_num_steps: 128
   max_num_epochs: 8
@@ -68,6 +73,8 @@ policy:
     stop_strings: []
     colocated:
       enabled: true
+    # Compatibility adapter for the installed native vLLM; training settings are unchanged.
+    worker_extension_cls_fqn: nemotron.recipes.parse.training.native_vllm.NativeParseGenerationWorker
     vllm_cfg:
       load_format: auto
       skip_tokenizer_init: false
@@ -94,6 +101,7 @@ data:
     prompt_file: ${prompt_file}
     env_name: parse-page
 env:
+  _override_: true # Replace unrelated upstream reward environments.
   parse-page:
     phase: train
     metrics_file: ${output_dir}/train-components.jsonl
