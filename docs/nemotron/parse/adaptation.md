@@ -62,8 +62,8 @@ the [page fields](workflow.md#data-preparation-example). Keep image paths relati
 to the manifest and inside the dataset directory. Choose stable, unique page IDs
 and disjoint context groups across the three splits.
 
-After writing all manifests and images, publish the dataset artifact from the
-Nemotron checkout in the Parse runtime:
+After writing all manifests and images, save this snippet as
+`publish_dataset.py` in the Nemotron checkout:
 
 ```python
 from pathlib import Path
@@ -75,6 +75,13 @@ identity = dataset_identity(data_dir)
 artifact(data_dir, "parse/dataset", data_dir, identity=identity)
 ```
 
+Run it with the stage dependencies:
+
+```bash
+PYTHONPATH="$PWD/src${PYTHONPATH:+:$PYTHONPATH}" \
+  uv run --locked --project src/nemotron/recipes/parse/stage1_sft python publish_dataset.py
+```
+
 This records manifest and image hashes and split counts in `artifact.json`.
 SFT and RLVR verify that identity before consuming the dataset. Keep a completed
 dataset unchanged and use a new directory for another dataset version.
@@ -83,7 +90,7 @@ dataset unchanged and use a new directory for another dataset version.
 
 Both training stages accept `task`, a fully qualified Python class or factory
 that takes no arguments. The factory's module must be importable in the Parse
-runtime, including its worker processes. The bundled profiles select:
+stage environment, including its worker processes. The bundled profiles select:
 
 ```yaml
 task: nemotron.recipes.parse.dental.task.DentalTask
@@ -95,6 +102,12 @@ After implementing your own task, select it in a stage config or CLI override:
 nemotron parse sft task=my_domain.task.DocumentTask data_dir=/path/to/data
 nemotron parse rlvr task=my_domain.task.DocumentTask data_dir=/path/to/data
 ```
+
+Put external task modules on `PYTHONPATH` before launching the CLI. Local
+stage execution and Ray workers preserve this import path. For containers,
+mount the task code and set its container path in the profile's `env_vars`.
+The reward environment must be importable there as well. Add any additional
+task dependencies to the relevant stage projects and regenerate their locks.
 
 Pass the appropriate model/output paths as described in the
 [recipe guide](workflow.md#run-the-dental-worked-example). Changing `data_dir`

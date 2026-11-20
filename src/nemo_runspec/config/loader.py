@@ -74,6 +74,12 @@ def find_config_file(config_name: str, config_dir: Path) -> Path:
     Raises:
         FileNotFoundError: If config not found
     """
+    # Existing files take precedence over bundled profile names, including
+    # bare JSON filenames accepted by OmegaConf.
+    path = Path(config_name)
+    if path.is_file():
+        return path
+
     # If it looks like a path, use it directly
     if "/" in config_name or config_name.endswith(".yaml") or config_name.endswith(".yml"):
         path = Path(config_name)

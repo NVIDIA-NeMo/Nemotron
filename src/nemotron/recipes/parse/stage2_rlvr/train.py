@@ -2,7 +2,8 @@
 # [tool.runspec]
 # schema = "1"
 # name = "parse/rlvr"
-# setup = "Use the isolated Parse runtime; see recipes/parse/README.md."
+# image = "vllm/vllm-openai:v0.33.0@sha256:d825baf9ce4b1b6bfc5ecc7b79880c7e6748c65a72d697ce3d47607aafa84c6e"
+# setup = "Stage dependencies resolved with uv; see docs/nemotron/parse/environments.md."
 # [tool.runspec.run]
 # launch = "direct"
 # [tool.runspec.config]
@@ -18,8 +19,6 @@
 
 import json
 from pathlib import Path
-
-from omegaconf import OmegaConf
 
 from nemotron.recipes.parse.common import (
     Progress,
@@ -77,8 +76,9 @@ def main(cfg: RLVRConfig | None = None):
             sft_model, test, output / "before", samples=cfg.evaluation_samples, processor_source=processor
         )
         model = prepare_model(sft_model, output / "initial-model", scope="decoder", processor_source=processor)
-        raw = rlvr_config(cfg.training_config, model, curriculum, output, prompt_file=task.prompt_file)
-        config = OmegaConf.to_container(OmegaConf.merge(raw, cfg.training), resolve=True)
+        config = rlvr_config(
+            cfg.training_config, model, curriculum, output, prompt_file=task.prompt_file, overrides=cfg.training
+        )
         write_json(output / "training-config.json", config)
         checkpoint = train(
             config,

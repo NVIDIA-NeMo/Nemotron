@@ -3,7 +3,7 @@
 Adapt Nemotron 3.5 Parse to document extraction tasks with supervised fine-tuning
 (SFT), reinforcement learning with verifiable rewards (RLVR), and checkpoint
 evaluation. The recipe provides these stages through the Nemotron CLI, with
-explicit data and model artifacts and a dedicated training runtime.
+explicit data and model artifacts, local uv environments, and prebuilt containers.
 Default evaluation follows the training artifacts to compare the configured base
 model, SFT checkpoint and RLVR checkpoint on the same held-out pages, and reports
 the uplift at each stage.
@@ -16,7 +16,7 @@ configurable task adapter supplies the domain-specific behavior.
 
 ## Run the Reference Workflow
 
-1. [Set up the Parse runtime](runtime.md) on Linux with your GPU visible.
+1. [Set up local or container execution](runtime.md) on Linux with your GPU visible.
 2. [Run data preparation, SFT, RLVR and evaluation](workflow.md#run-the-dental-worked-example).
 3. [Compare the base, SFT and RLVR models](workflow.md#evaluation-and-dental-example-results)
    on the same held-out pages and inspect the saved answers and uplift report.
@@ -45,7 +45,8 @@ thresholds and reward composition for your own use case.
 ```{toctree}
 :hidden:
 
-Runtime Setup <runtime>
+Execution Setup <runtime>
+Environment Reference <environments>
 Training and Evaluation Workflow <workflow>
 Domain Adaptation <adaptation>
 Evaluation and Reward Building Blocks <rewards>

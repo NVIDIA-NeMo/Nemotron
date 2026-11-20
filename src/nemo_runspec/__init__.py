@@ -18,7 +18,18 @@ Usage::
 
 from nemo_runspec._models import Runspec, RunspecConfig, RunspecResources, RunspecRun
 from nemo_runspec._parser import parse
-from nemo_runspec.manifest_tracker import ManifestTracker
+
+
+def __getattr__(name: str):
+    # The metadata parser and uv bootstrap helpers use only the standard
+    # library. Load artifact tracking dependencies only when requested.
+    if name == "ManifestTracker":
+        from nemo_runspec.manifest_tracker import ManifestTracker
+
+        globals()[name] = ManifestTracker
+        return ManifestTracker
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "parse",

@@ -2,7 +2,8 @@
 # [tool.runspec]
 # schema = "1"
 # name = "parse/sft"
-# setup = "Use the isolated Parse runtime; see recipes/parse/README.md."
+# image = "nvcr.io/nvidia/nemo-automodel:26.10.00@sha256:0e4279f2740b4de9c3884f5d434d1a1520057c825f8a28d1e66dd16515451e9c"
+# setup = "Stage dependencies resolved with uv; see docs/nemotron/parse/environments.md."
 # [tool.runspec.run]
 # launch = "direct"
 # [tool.runspec.config]
@@ -16,7 +17,6 @@
 
 """Run SFT with terminal progress and explicit artifacts."""
 
-import json
 import time
 from pathlib import Path
 
@@ -30,7 +30,7 @@ def main(cfg: SFTConfig | None = None):
     from nemotron.recipes.parse.training.config import sft_config
     from nemotron.recipes.parse.training.data import load_pages
     from nemotron.recipes.parse.training.lineage import model_reference, verify_model
-    from nemotron.recipes.parse.training.model import prepare_model, sft_checkpoint
+    from nemotron.recipes.parse.training.model import materialize_base_model, prepare_model, sft_checkpoint
     from nemotron.recipes.parse.training.sft import make_trainer
     from nemotron.recipes.parse.training.sft_data import collate
     from nemotron.recipes.parse.training.task import load_task
@@ -39,10 +39,11 @@ def main(cfg: SFTConfig | None = None):
     task = load_task(cfg.task, stage="sft") if cfg.task is not None else None
     identity = validate_dataset(cfg.data_dir)
     with stage_run("sft", cfg.output_dir, cfg) as output:
-        model = prepare_model(cfg.model, output / "initial-model", scope="full", revision=cfg.model_revision)
-        source = json.loads((model / "model-source.json").read_text())
-        base = model_reference(source["checkpoint"], source["processor"],
-                               source=cfg.model, revision=source["revision"])
+        # Cache paths inside a training container disappear with that container.
+        # Persist the unchanged ancestor separately from the adapted model view.
+        base_model, revision = materialize_base_model(cfg.model, output / "base-model", revision=cfg.model_revision)
+        base = model_reference(base_model, source=cfg.model, revision=revision)
+        model = prepare_model(base_model, output / "initial-model", scope="full")
         raw = sft_config(cfg.training_config, model, cfg.data_dir, output)
         config = OmegaConf.to_container(OmegaConf.merge(raw, cfg.training), resolve=True)
         for section in ("model", "processor"):

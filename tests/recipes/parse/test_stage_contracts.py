@@ -3,6 +3,7 @@
 import copy
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,7 +19,7 @@ from nemotron.recipes.parse.stage3_eval import evaluate as eval_stage
 from nemotron.recipes.parse.training import config as training_config
 from nemotron.recipes.parse.training import model, rlvr
 from nemotron.recipes.parse.training.data import load_pages
-from nemotron.recipes.parse.training.lineage import model_reference
+from nemotron.recipes.parse.training.lineage import model_reference, read_lineage
 
 
 @pytest.fixture
@@ -94,7 +95,7 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
     (base / "config.json").write_text("{}")
     (base / "model.safetensors").write_bytes(b"base fixture")
 
-    def prepare(checkpoint, output, scope, revision):
+    def prepare(checkpoint, output, scope, revision=None):
         calls.append(("prepare", checkpoint, scope))
         output.mkdir()
         (output / "model-source.json").write_text(json.dumps(dict(
@@ -149,15 +150,21 @@ def test_sft_runs_baseline_and_collate_before_training(dataset, tmp_path, monkey
         calls.append("collate")
         return {"labels": [Labels()]}
 
+    monkeypatch.setattr(model, "resolve_model", lambda checkpoint, revision: (base, "resolved-revision"))
     monkeypatch.setattr(model, "prepare_model", prepare)
     monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft", SimpleNamespace(make_trainer=make_trainer))
     monkeypatch.setitem(sys.modules, "nemotron.recipes.parse.training.sft_data", SimpleNamespace(collate=collate))
     result = sft_stage.main(cfg)
-    assert calls == [("prepare", "local-base", "full"), "setup", "baseline", "log-baseline", "collate", "train"]
+    persistent_base = cfg.output_dir / "base-model"
+    assert calls == [("prepare", persistent_base, "full"), "setup", "baseline", "log-baseline", "collate", "train"]
     artifact = json.loads(result.read_text())
     assert artifact["path"].endswith("epoch_11_step_2851/model/consolidated")
     assert artifact["processor_source"] == artifact["path"]
-    assert artifact["lineage"]["models"]["base"]["path"] == str(base)
+    assert artifact["lineage"]["models"]["base"]["path"] == str(persistent_base)
+    assert artifact["lineage"]["models"]["base"]["revision"] == "resolved-revision"
+    # Consuming the artifact must not require the original container/cache.
+    shutil.rmtree(base)
+    read_lineage(result, "sft", common.dataset_identity(dataset))
     assert artifact["lineage"]["models"]["base"]["source"] == "local-base"
     assert common.validate_dataset(dataset)["pages"]["test"] == 1
 
@@ -220,7 +227,8 @@ def test_rlvr_preserves_order_and_processor_while_isolating_curriculum(dataset, 
         calls.append("prepare-decoder")
         return output
 
-    def load_config(path, model_path, data_dir, output, *, prompt_file):
+    def load_config(path, model_path, data_dir, output, *, prompt_file, overrides=None):
+        assert overrides in (None, {})
         assert Path(prompt_file).name == "prompt.txt"
         assert data_dir == cfg.output_dir / "curriculum"
         monitor = json.loads((data_dir / "monitor.jsonl").read_text())

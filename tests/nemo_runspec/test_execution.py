@@ -165,6 +165,14 @@ class TestCreateExecutorDocker:
         assert isinstance(executor, run.DockerExecutor)
         assert executor.container_image == "nvcr.io/nvidia/nemo:latest"
 
+    def test_docker_preserves_failure_and_configured_user(self):
+        env = _make_env(
+            executor="docker", container_image="parse:test", additional_kwargs={"user": "1000:1000"}
+        )
+        executor = create_executor(env=env, env_vars={}, packager=_FakePackager())
+        assert executor.additional_kwargs == {"user": "1000:1000"}
+        assert executor.env_vars["SHELLOPTS"] == "pipefail"
+
     def test_docker_executor_requires_image(self):
         env = _make_env(executor="docker")
         with pytest.raises(ValueError, match="container_image required"):

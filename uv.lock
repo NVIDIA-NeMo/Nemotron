@@ -3707,7 +3707,7 @@ dependencies = [
 
 [[package]]
 name = "nemotron"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "colorama" },
@@ -3715,6 +3715,7 @@ dependencies = [
     { name = "fsspec" },
     { name = "huggingface-hub" },
     { name = "jinja2" },
+    { name = "leptonai" },
     { name = "nemo-run" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine != 'x86_64' and extra == 'extra-8-nemotron-all' and extra == 'extra-8-nemotron-bfcl-mcp') or (platform_machine != 'x86_64' and extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-byob') or (platform_machine != 'x86_64' and extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-data-sdg') or (sys_platform != 'linux' and extra == 'extra-8-nemotron-all' and extra == 'extra-8-nemotron-bfcl-mcp') or (sys_platform != 'linux' and extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-byob') or (sys_platform != 'linux' and extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-data-sdg')" },
     { name = "numpy", version = "2.3.5", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine != 'x86_64' or sys_platform != 'linux' or (extra == 'extra-8-nemotron-all' and extra == 'extra-8-nemotron-bfcl-mcp') or (extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-byob') or (extra == 'extra-8-nemotron-bfcl-mcp' and extra == 'extra-8-nemotron-data-sdg')" },
@@ -3946,6 +3947,7 @@ requires-dist = [
     { name = "jinja2", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=3.1,<4" },
     { name = "jinja2", marker = "python_full_version >= '3.11' and extra == 'translate'", specifier = ">=3.1,<4" },
     { name = "jsonschema", marker = "python_full_version >= '3.11' and extra == 'bfcl-mcp'", specifier = ">=4.0" },
+    { name = "leptonai", specifier = "<0.46.0" },
     { name = "loguru", marker = "python_full_version >= '3.11' and extra == 'byob'", specifier = ">=0.7,<1" },
     { name = "loguru", marker = "python_full_version >= '3.11' and extra == 'translate'", specifier = ">=0.7,<1" },
     { name = "mamba-ssm", marker = "python_full_version >= '3.11' and platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'tokenizer-extension-gpu'", specifier = ">=2.2" },
