@@ -179,6 +179,9 @@ submission; packaged job directories do not provide persistent stage handoffs.
 Docker mounts used for artifacts must include an explicit source and destination,
 such as `/data:/data`. A destination-only mount creates an anonymous volume that
 is not shared between stage containers.
+Declare all Docker mounts in the profile's `mounts` field.
+Parse rejects `additional_kwargs.volumes` and `additional_kwargs.mounts` because
+they would bypass artifact-path validation.
 
 Keep custom training YAML files on a mounted path and select them with an
 absolute `training_config` path. Mounted configurations retain that path even

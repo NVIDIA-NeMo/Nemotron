@@ -703,6 +703,9 @@ def _create_docker_executor(
         num_gpus = _get_env(env, "nproc_per_node")
     if num_gpus is None and script_resources is not None:
         num_gpus = script_resources.gpus_per_node
+    if num_gpus == "gpu":
+        # Runspecs use "gpu" for all GPUs; Docker's DeviceRequest uses -1.
+        num_gpus = -1
 
     # NeMo-Run pipes commands through tee. Bash must retain the command's
     # failure status rather than reporting tee's successful exit.

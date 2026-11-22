@@ -119,6 +119,12 @@ def _validate_remote_paths(payload: dict[str, Any], env: DictConfig, stage: str)
     if env.get("executor") == "docker":
         from nemo_runspec.execution import resolve_docker_mounts
 
+        mount_overrides = {"volumes", "mounts"}.intersection(env.get("additional_kwargs") or {})
+        if mount_overrides:
+            raise typer.BadParameter(
+                "Configure Docker mounts through the profile's mounts field, not additional_kwargs. "
+                "Parse validates these mounts to preserve artifacts between stages."
+            )
         mounts = resolve_docker_mounts(mounts)
     if env.get("executor") == "slurm" and env.get("lustre_mount", "/lustre:/lustre"):
         mounts.append(env.get("lustre_mount", "/lustre:/lustre"))

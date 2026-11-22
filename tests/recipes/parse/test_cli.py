@@ -472,3 +472,24 @@ def test_mounted_ignored_training_config_keeps_its_path(monkeypatch, tmp_path, r
         assert ".nemotron/parse/customer.yaml" not in bundle.getnames()
         config = OmegaConf.create(bundle.extractfile("config.yaml").read().decode())
     assert config.training_config == str(custom)
+
+
+@pytest.mark.parametrize("override", ["volumes", "mounts"])
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_docker_cannot_override_validated_mounts(monkeypatch, tmp_path, override, dry_run):
+    from nemotron.cli.commands.parse import commands
+
+    profile = tmp_path / "env.toml"
+    profile.write_text(
+        '[container]\nexecutor="docker"\nmounts=["/data:/data"]\n[container.additional_kwargs]\n' + override + "=[]\n"
+    )
+    monkeypatch.setenv("NEMOTRON_ENV_FILE", str(profile))
+    calls = []
+    monkeypatch.setattr(commands, "_execute_remote", lambda *args: calls.append(args))
+    arguments = ["parse", "data", "--run", "container", "data_dir=/data/data"]
+    if dry_run:
+        arguments.append("--dry-run")
+    result = runner.invoke(app, arguments)
+    assert result.exit_code != 0
+    assert "Configure Docker mounts through the profile's mounts field" in result.output
+    assert calls == []
