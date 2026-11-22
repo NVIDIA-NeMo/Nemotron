@@ -51,9 +51,9 @@ Nemotron-3.5-Super-VL uses Nemotron-3-Super as the reference for GPU sizing and 
 - **Vision-language training:** Assumes the vision encoder is frozen and the projector and language model are trainable, consistent with the published Megatron Bridge SFT recipes. The additional parameter-state memory is relatively small compared with the language backbone, so the calculator uses Nemotron-3-Super as the sizing and performance reference.
 - **Visual-token estimation:** Both text and visual tokens contribute to maximum sequence length and total dataset tokens. Visual-token counts depend on image or video resolution and preprocessing. Estimate them with the [Nemotron-3.5-Super-VL Hugging Face image processor](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-BF16/blob/main/image_processing_nemotron_h_omni.py).
 
-### Nemotron-3.5-Decide-8B sizing notes
+### Nemotron-3.5-Decision-8B sizing notes
 
-Nemotron-3.5-Decide-8B is a dense 8B bidirectional text model. The calculator supports LoRA and full SFT for it. GRPO is not available because the model has no RL calibration.
+Nemotron-3.5-Decision-8B is a dense 8B bidirectional text model. The calculator supports LoRA and full SFT for it. GRPO is not available because the model has no RL calibration.
 
 - **GPU sizing:** Memory-fit rows for this model are formula-based estimates, not Megatron Bridge measurements. They assume 16 bytes per trainable parameter for full SFT (BF16 weights and gradients, fp32 Adam states and master weights), BF16 weights for LoRA, activation recompute, and 80% usable GPU memory. The calculator labels these rows as estimated. The only run on this model was a full SFT job on 8 GPUs with short examples (8,192-token cap).
 - **Throughput:** No bundled benchmark was measured on this model. MFU is transferred from the Nemotron-3-Super AutoModel H100 BF16 reference and applied to this model's own FLOPs per token, so tokens/s/GPU and runtime are directional estimates. Attention uses bidirectional FLOPs, which are twice the causal count per attended token.
