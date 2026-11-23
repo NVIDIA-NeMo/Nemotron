@@ -14,7 +14,6 @@
 
 """Tests for PackedSequenceBuilder."""
 
-import pytest
 
 from nemotron.data_prep.packing.builder import PackedSequenceBuilder
 
@@ -128,7 +127,7 @@ class TestPackedSequenceBuilderPacking:
 
     def test_loss_mask_multi_subsequence_no_bleed(self) -> None:
         """Test that loss_mask alignment doesn't bleed across subsequence boundaries."""
-        builder = PackedSequenceBuilder(pack_size=100, seed=42)
+        builder = PackedSequenceBuilder(pack_size=100, algorithm="first_fit_decreasing", seed=42)
         # Seq1: tokens [1,2,3], mask [1,1,1] -> aligned [1,1,0]
         # Seq2: tokens [4,5], mask [0,1] -> aligned [1,0]
         builder.add_sequence([1, 2, 3], loss_mask=[1, 1, 1])
