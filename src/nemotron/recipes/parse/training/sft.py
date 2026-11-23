@@ -55,7 +55,8 @@ def predict(model, processor, rows):
 
 
 def make_trainer(config, observer, *, monitor: Monitor | None = None):
-    import nemo_rl  # noqa: F401 -- pinned Transformers remote-code compatibility fixes
+    import copy
+
     from nemo_automodel.components.config.loader import ConfigNode
     from nemo_automodel.recipes.vlm.finetune import FinetuneRecipeForVLM
 
@@ -95,7 +96,14 @@ def make_trainer(config, observer, *, monitor: Monitor | None = None):
     import torch
 
     torch.set_num_threads(4)
-    trainer = ParseSFT(ConfigNode(config))
+    # New AutoModel versions reject this legacy option. False preserves the
+    # existing embedding trainability, so omit only that explicit no-op while
+    # keeping the recipe configuration identical to the original recipe.
+    native_config = copy.deepcopy(config)
+    freeze = native_config.get("freeze_config") or {}
+    if freeze.get("freeze_embeddings") is False:
+        freeze.pop("freeze_embeddings")
+    trainer = ParseSFT(ConfigNode(native_config))
     trainer.baseline = True
     trainer.started = time.monotonic()
     trainer.setup()

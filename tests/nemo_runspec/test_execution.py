@@ -165,6 +165,14 @@ class TestCreateExecutorDocker:
         assert isinstance(executor, run.DockerExecutor)
         assert executor.container_image == "nvcr.io/nvidia/nemo:latest"
 
+    def test_docker_preserves_failure_and_configured_user(self):
+        env = _make_env(
+            executor="docker", container_image="parse:test", additional_kwargs={"user": "1000:1000"}
+        )
+        executor = create_executor(env=env, env_vars={}, packager=_FakePackager())
+        assert executor.additional_kwargs == {"user": "1000:1000"}
+        assert executor.env_vars["SHELLOPTS"] == "pipefail"
+
     def test_docker_executor_requires_image(self):
         env = _make_env(executor="docker")
         with pytest.raises(ValueError, match="container_image required"):
@@ -1125,3 +1133,32 @@ class TestMaterializePodmanAuth:
             enroot_credentials_path=custom,
         )
         assert path == "/lustre/cache/.auth/auth.json"
+
+
+@pytest.mark.parametrize("recipe", ["embed", "rerank"])
+@pytest.mark.parametrize("explicit_gpus", [None, 0, 2])
+def test_docker_serializes_symbolic_gpu_defaults(recipe, explicit_gpus, monkeypatch):
+    from types import SimpleNamespace
+
+    from nemo_run.core.execution import docker
+
+    from nemo_runspec import parse
+
+    root = Path(__file__).resolve().parents[2]
+    spec = parse(root / f"src/nemotron/recipes/{recipe}/stage2_finetune/train.py")
+    assert spec.resources.gpus_per_node == "gpu"
+    env = {"executor": "docker", "runtime": "runc"}
+    if explicit_gpus is not None:
+        env["gpus_per_node"] = explicit_gpus
+    executor = create_executor(env, {}, None, default_image=spec.image, script_resources=spec.resources)
+    executor.experiment_id = "unit-test"
+    requests = []
+    client = SimpleNamespace(containers=SimpleNamespace(run=lambda *args, **kwargs: requests.append(kwargs)))
+    monkeypatch.setattr(docker, "ensure_network", lambda **kwargs: None)
+    docker.DockerContainer(name="stage", command=["true"], executor=executor, extra_env={}).run(client, "unit-test")
+    expected = -1 if explicit_gpus is None else explicit_gpus
+    assert executor.num_gpus == expected
+    if expected:
+        assert requests[0]["device_requests"][0]["Count"] == expected
+    else:
+        assert "device_requests" not in requests[0]

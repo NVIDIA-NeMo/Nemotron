@@ -152,3 +152,5 @@ cache/
 
 # Guidebook figure generators are kept local, not shipped with the docs.
 src/nemotron/steps/*/guidebook/generate_assets.py
+
+src/nemotron/recipes/parse/stage*/.venv

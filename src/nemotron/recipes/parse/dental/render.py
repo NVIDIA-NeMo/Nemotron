@@ -3,7 +3,8 @@
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+
+from PIL import Image, ImageDraw, ImageFont, features
 
 PROMPT = "</s><s><predict_bbox><predict_classes><output_markdown><predict_text_in_pic>"
 PROCEDURES = ["filling", "crown", "extraction"]
@@ -11,8 +12,19 @@ INK = "#264f49"
 ANTERIOR = set(range(6, 12)) | set(range(22, 28))
 
 
+def require_raqm():
+    """Reject layout fallback, which changes the generated training images."""
+    if not features.check_feature("raqm"):
+        raise RuntimeError(
+            "Dental rendering requires Pillow with Raqm support; BASIC layout changes the training images. "
+            "Use the validated Parse container image, or install libfribidi0 on Debian/Ubuntu "
+            "and a Raqm-enabled Pillow build, then restart Python."
+        )
+
+
 @lru_cache(maxsize=32)
 def font(size, serif=False):
+    require_raqm()
     name = "DejaVuSerif.ttf" if serif else "DejaVuSans.ttf"
     return ImageFont.truetype(
         str(Path(__file__).parent / "fonts" / name), size, layout_engine=ImageFont.Layout.RAQM
@@ -334,6 +346,7 @@ def latex(rows):
 
 
 def render_page(data):
+    require_raqm()
     w, h = 1400, 1100
     ink = "#294b42"
     pale = "#edf3ee"

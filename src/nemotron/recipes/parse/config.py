@@ -14,7 +14,6 @@ ROOT = Path(__file__).resolve().parent
 
 class StageConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    runtime_dir: Path = Path(".nemotron/parse-runtime")
     data_dir: Path = Path(".nemotron/parse/data")
 
 

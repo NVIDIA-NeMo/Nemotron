@@ -1,11 +1,14 @@
 """Run NeMo RL GRPO with progress reporting and component metrics."""
 
 import json
+import os
 import sys
 from pathlib import Path
 
 
 def train(config, observer, *, environment_class: str, reward_metric: str | None = None):
+    # All actors use this stage's uv environment, including the installed NeMo RL package.
+    os.environ["NEMO_RL_PY_EXECUTABLES_SYSTEM"] = "1"
     import ray
     from nemo_rl.algorithms.grpo import MasterConfig, setup
     from nemo_rl.algorithms.utils import get_tokenizer
@@ -29,6 +32,9 @@ def train(config, observer, *, environment_class: str, reward_metric: str | None
         register_processor("parse_page", process_page)
     actor = environment_class
     ACTOR_ENVIRONMENT_REGISTRY[actor] = PY_EXECUTABLES.SYSTEM
+    generation_extension = config["policy"]["generation"].get("worker_extension_cls_fqn")
+    if generation_extension:
+        ACTOR_ENVIRONMENT_REGISTRY[generation_extension] = sys.executable
     for name in ("parse-page", "parse-page-validation"):
         if name not in ENV_REGISTRY:
             register_env(name, actor)
@@ -86,73 +92,92 @@ def train(config, observer, *, environment_class: str, reward_metric: str | None
         def log_plot(self, figure, step, name):
             pass
 
-    ray.init(
+    context = ray.init(
+        address="local",
         num_cpus=8,
         num_gpus=1,
         include_dashboard=False,
         runtime_env={
             "py_executable": sys.executable,
-            "env_vars": add_hf_modules_cache_to_pythonpath(worker_env()),
+            "env_vars": add_hf_modules_cache_to_pythonpath(dict(worker_env(), NEMO_RL_PY_EXECUTABLES_SYSTEM="1")),
         },
     )
-    processor = get_tokenizer(master.policy["tokenizer"], get_processor=True)
-    tokenizer = processor.tokenizer
-    master.policy["generation"] = configure_generation_config(master.policy["generation"], tokenizer)
-    dataset, validation = setup_response_data(processor, master.data, None, is_vlm=True)
-    environment = create_env("parse-page", master.env["parse-page"])
-    validation_environment = create_env("parse-page-validation", master.env["parse-page-validation"])
-
-    def mapping(data, env):
-        entries = data.values() if isinstance(data, dict) else [data]
-        return {name: env for entry in entries for name in entry.task_data_processors}
-
-    (
-        policy,
-        generation,
-        _,
-        cluster,
-        loader,
-        val_loader,
-        loss,
-        logger,
-        checkpointer,
-        state,
-        master,
-        teachers,
-        aliases,
-    ) = setup(
-        master,
-        tokenizer,
-        dataset,
-        validation,
-        processor=processor,
-        policy_factory=make_policy_factory(master.data_plane),
-    )
-    observer.configure(master.grpo.max_num_steps, len(loader))
-    local = LocalLogger()
-    logger.loggers.append(local)
+    # NeMo RL memory telemetry otherwise discovers every local Ray cluster,
+    # including clusters belonging to concurrent jobs. Bind it to this stage.
+    previous_address = os.environ.get("RAY_ADDRESS")
+    os.environ["RAY_ADDRESS"] = context.address_info["gcs_address"]
     try:
-        with checkpointer:
-            select_sync_trainer(master, label="Parse RLVR")(
-                policy,
-                generation,
-                loader,
-                val_loader,
-                tokenizer,
-                loss,
-                mapping(dataset, environment),
-                mapping(validation, validation_environment),
-                logger,
-                checkpointer,
-                state,
-                master,
-                processor=processor,
-            )
+        processor = get_tokenizer(master.policy["tokenizer"], get_processor=True)
+        tokenizer = processor.tokenizer
+        master.policy["generation"] = configure_generation_config(master.policy["generation"], tokenizer)
+        dataset, validation = setup_response_data(processor, master.data, None, is_vlm=True)
+        environment = create_env("parse-page", master.env["parse-page"])
+        validation_environment = create_env("parse-page-validation", master.env["parse-page-validation"])
+
+        def mapping(data, env):
+            entries = data.values() if isinstance(data, dict) else [data]
+            return {name: env for entry in entries for name in entry.task_data_processors}
+
+        (
+            policy,
+            generation,
+            _,
+            cluster,
+            loader,
+            val_loader,
+            loss,
+            logger,
+            checkpointer,
+            state,
+            master,
+            teachers,
+            aliases,
+        ) = setup(
+            master,
+            tokenizer,
+            dataset,
+            validation,
+            processor=processor,
+            policy_factory=make_policy_factory(master.data_plane),
+        )
+        observer.configure(master.grpo.max_num_steps, len(loader))
+        local = LocalLogger()
+        logger.loggers.append(local)
+        try:
+            with checkpointer:
+                select_sync_trainer(master, label="Parse RLVR")(
+                    policy,
+                    generation,
+                    loader,
+                    val_loader,
+                    tokenizer,
+                    loss,
+                    mapping(dataset, environment),
+                    mapping(validation, validation_environment),
+                    logger,
+                    checkpointer,
+                    state,
+                    master,
+                    processor=processor,
+                )
+        finally:
+            try:
+                logger.finish()
+            finally:
+                try:
+                    # The pinned SDK terminates policy actors here, releasing
+                    # their weights/optimizer before vLLM wakes for cleanup.
+                    if policy.shutdown() is False:
+                        raise RuntimeError("Policy shutdown failed")
+                finally:
+                    if generation.shutdown() is False:
+                        raise RuntimeError("Generation shutdown failed")
     finally:
-        logger.finish()
-        generation.shutdown()
-        policy.shutdown()
         ray.shutdown()
+        if previous_address is None:
+            os.environ.pop("RAY_ADDRESS", None)
+        else:
+            os.environ["RAY_ADDRESS"] = previous_address
     checkpoints = list(
         Path(config["checkpointing"]["checkpoint_dir"]).glob("step_*/policy/weights/model/consolidated")
     )

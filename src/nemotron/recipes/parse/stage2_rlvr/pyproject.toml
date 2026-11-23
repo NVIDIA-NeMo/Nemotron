@@ -1,0 +1,56 @@
+[project]
+name = "nemotron-parse-stage2-rlvr"
+version = "0.0.0"
+requires-python = ">=3.13.14,<3.14"
+dependencies = [
+  "typer>=0.12",
+  "rich>=13",
+  "pydantic>=2",
+  "omegaconf>=2.3",
+  "PyYAML>=6",
+  "fsspec>=2024",
+  "vllm==0.33.0",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
+  "torchao==0.18.0",
+  "transformers==5.16.1",
+  "Pillow>=13",
+  "ray[default]>=2.60,<3",
+  "setuptools<81",
+  "nemo-lens",
+  # Preserve the SDK's original backend wheel source when using commit archives.
+  "triton; platform_machine != 's390x'",
+  "matplotlib>=3.9",
+  "nemo-automodel",
+  "nemo-rl",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux'"]
+override-dependencies = [
+  # Source-only override: the same SDK-pinned commit, without a Git CLI bootstrap dependency.
+  "TransferQueue @ https://github.com/Ascend/TransferQueue/archive/05d4cc3377bee9b0f2897bbb90914ee20c0aea39.tar.gz",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
+  "transformers==5.16.1",
+  "quack-kernels==0.6.5",
+  "nvidia-cudnn-cu13==9.24.0.43",
+  "nvidia-nvshmem-cu13==3.4.5",
+]
+
+[tool.uv.sources]
+triton = { index = "pytorch-cu130", marker = "platform_machine != 's390x'" }
+nemo-lens = { url = "https://github.com/NVIDIA-NeMo/Lens/archive/4d045c03186b90afdc815db46b671f6a21bc7e98.tar.gz" }
+nemo-automodel = { url = "https://github.com/NVIDIA-NeMo/Automodel/archive/b916107a5ce8e77a3f18682f8b0eaa46a4b54389.tar.gz" }
+nemo-rl = { url = "https://github.com/oliverholworthy/NeMo-RL/archive/5a21699af75913a0ff827cb5481bebacefad19c1.tar.gz" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.nemotron]
+container-mode = "isolated"
+entry-point = "train.py"
+environment-name = "parse-stage2_rlvr"

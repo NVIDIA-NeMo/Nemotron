@@ -625,7 +625,7 @@ def create_executor(
     if executor_type == "local":
         return _create_local_executor(env, env_vars)
     if executor_type == "docker":
-        return _create_docker_executor(env, env_vars, packager, default_image)
+        return _create_docker_executor(env, env_vars, packager, default_image, script_resources)
     if executor_type == "slurm":
         return create_slurm_executor(
             env,
@@ -659,22 +659,10 @@ def _create_local_executor(env: Any, env_vars: dict[str, str]) -> Any:
     )
 
 
-def _create_docker_executor(
-    env: Any,
-    env_vars: dict[str, str],
-    packager: Any,
-    default_image: str | None,
-) -> Any:
-    """DockerExecutor with env-var-expanded, path-resolved host mounts."""
-    import nemo_run as run
-
-    container_image = _resolve_container_image(env, default_image)
-    if not container_image:
-        raise ValueError("container_image required for docker executor")
-
-    # Resolve relative paths and expand env vars in mounts
+def resolve_docker_mounts(mounts: Iterable[str]) -> list[str]:
+    """Resolve host paths and omit mounts with unset environment variables."""
     resolved_mounts: list[str] = []
-    for mount in _get_env(env, "mounts") or []:
+    for mount in mounts:
         if ":" not in mount:
             resolved_mounts.append(mount)
             continue
@@ -691,13 +679,48 @@ def _create_docker_executor(
             host_path = str(Path.cwd() / host_path)
         resolved_mounts.append(f"{host_path}:{container_path}")
 
+    return resolved_mounts
+
+
+def _create_docker_executor(
+    env: Any,
+    env_vars: dict[str, str],
+    packager: Any,
+    default_image: str | None,
+    script_resources: Any | None = None,
+) -> Any:
+    """DockerExecutor with env-var-expanded, path-resolved host mounts."""
+    import nemo_run as run
+
+    container_image = _resolve_container_image(env, default_image)
+    if not container_image:
+        raise ValueError("container_image required for docker executor")
+
+    resolved_mounts = resolve_docker_mounts(_get_env(env, "mounts") or [])
+
+    num_gpus = _get_env(env, "gpus_per_node")
+    if num_gpus is None:
+        num_gpus = _get_env(env, "nproc_per_node")
+    if num_gpus is None and script_resources is not None:
+        num_gpus = script_resources.gpus_per_node
+    if num_gpus == "gpu":
+        # Runspecs use "gpu" for all GPUs; Docker's DeviceRequest uses -1.
+        num_gpus = -1
+
+    # NeMo-Run pipes commands through tee. Bash must retain the command's
+    # failure status rather than reporting tee's successful exit.
+    env_vars = dict(env_vars)
+    env_vars.setdefault("USER", os.environ.get("USER") or "nemotron")
+    options = env_vars.get("SHELLOPTS", "").split(":")
+    env_vars["SHELLOPTS"] = ":".join(dict.fromkeys([opt for opt in options if opt] + ["pipefail"]))
     return run.DockerExecutor(
         container_image=container_image,
-        num_gpus=_get_env(env, "gpus_per_node") or _get_env(env, "nproc_per_node"),
+        num_gpus=num_gpus,
         runtime=_get_env(env, "runtime", "nvidia"),
         ipc_mode=_get_env(env, "ipc_mode"),
         shm_size=_get_env(env, "shm_size"),
         volumes=resolved_mounts,
+        additional_kwargs=_to_plain(_get_env(env, "additional_kwargs", {})),
         env_vars=env_vars,
         packager=packager,
     )
@@ -1815,8 +1838,15 @@ def execute_uv_local(
     extras: list[str] | None = None,
     pre_script_args: list[str] | None = None,
     env_vars: dict[str, str] | None = None,
+    locked: bool = False,
+    isolate_environment: bool = False,
 ) -> None:
-    """Execute a stage script locally with its stage-local UV project."""
+    """Execute a stage script locally with its stage-local UV project.
+
+    Set ``isolate_environment`` to ignore ``UV_PROJECT_ENVIRONMENT`` when
+    selecting the project's environment. Other environment settings, including
+    ``PYTHONPATH`` for external task modules, remain available to the script.
+    """
     uv_cmd = shutil.which("uv") or "uv"
     stage_dir = Path(stage_dir)
     repo_root = Path(repo_root)
@@ -1826,6 +1856,8 @@ def execute_uv_local(
         script = repo_script if repo_script.exists() else stage_dir / script
 
     cmd = [uv_cmd, "run"]
+    if locked:
+        cmd.append("--locked")
     for item in extra_with or []:
         cmd.extend(["--with", item])
     cmd.extend(["--project", str(stage_dir)])
@@ -1842,6 +1874,8 @@ def execute_uv_local(
         env.update(env_vars)
     # Avoid leaking an ambient venv into the stage-local project environment.
     env.pop("VIRTUAL_ENV", None)
+    if isolate_environment:
+        env.pop("UV_PROJECT_ENVIRONMENT", None)
     src_path = str(repo_root / "src")
     env["PYTHONPATH"] = os.pathsep.join(part for part in [src_path, env.get("PYTHONPATH", "")] if part)
 
@@ -1867,8 +1901,14 @@ def execute_uv_local_from_spec(
     extras: list[str] | None = None,
     torchrun_nproc_per_node: str | int | None = None,
     env_vars: dict[str, str] | None = None,
+    locked: bool = False,
+    isolate_environment: bool = False,
 ) -> None:
-    """Execute a parsed runspec locally using its launch mode and resources."""
+    """Execute a parsed runspec locally using its launch mode and resources.
+
+    ``isolate_environment`` forwards the project-environment isolation option
+    from :func:`execute_uv_local` without removing external task import paths.
+    """
     script_path = Path(spec.script_path)
     stage_dir = script_path.parent
     repo_root = _repo_root_for_script(script_path)
@@ -1894,6 +1934,8 @@ def execute_uv_local_from_spec(
         extras=extras,
         pre_script_args=pre_script_args,
         env_vars=env_vars,
+        locked=locked,
+        isolate_environment=isolate_environment,
     )
 
 

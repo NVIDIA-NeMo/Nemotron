@@ -1,0 +1,83 @@
+# GRPO Algorithm Configuration
+# Examplar script for running GRPO on Qwen2.5-VL-3B-Instruct
+defaults: "grpo_math_1B.yaml"
+
+grpo:
+  # Share immutable multimodal payloads across logical GRPO rows. Requires the
+  # vLLM generation backend. Works with data_plane.enabled=true except on
+  # NeMo-Gym runs; note it saves driver RAM only -- the wire payload is one row
+  # per logical row either way.
+  deduplicate_multimodal_data: false
+  # Debug-only exact Ray payload telemetry; serialization adds runtime overhead.
+  debug_payload_metrics: false
+  num_prompts_per_step: 8
+  reward_shaping:
+    overlong_buffer_length: 512
+
+checkpointing:
+  checkpoint_dir: results/clevr_grpo_${policy.model_name}
+
+policy:
+  model_name: Qwen/Qwen2.5-VL-3B-Instruct
+  train_global_batch_size: 128
+  train_micro_batch_size: 1
+  logprob_batch_size: 4
+  max_total_sequence_length: 2048
+  dynamic_batching:
+    enabled: true
+  sequence_packing:
+    enabled: false
+  optimizer:
+    kwargs:
+      lr: 5.0e-07
+  generation:
+    max_new_tokens: 1024
+    vllm_cfg:
+      skip_tokenizer_init: false
+    vllm_kwargs:
+      # mm_processor_cache_gb=4/8 both failed at step 20 validation due to cache not found in vLLM, disable cache for now.
+      mm_processor_cache_gb: 0
+
+data:
+  train:
+    dataset_name: clevr-cogent
+    split: train
+  validation:
+    dataset_name: clevr-cogent
+    split: valA
+  default:
+    prompt_file: examples/prompts/clevr_cogent_cot.txt
+    processor: vlm_hf_data_processor
+    env_name: clevr-cogent
+
+env:
+  clevr-cogent:
+    num_workers: 8
+    reward_functions:
+    - name: format
+      weight: 0.2
+    - name: exact_alnum
+      weight: 0.8
+  geometry3k:
+    num_workers: 8
+    reward_functions:
+    - name: format
+      weight: 0.1
+    - name: math_expr
+      weight: 0.9
+  refcoco:
+    num_workers: 8
+    reward_functions:
+    - name: format
+      weight: 0.1
+    - name: bbox_giou
+      weight: 0.9
+      kwargs:
+        giou_penalty_thres: 0.5
+
+logger:
+  tensorboard_enabled: true
+  monitor_gpus: false
+
+cluster:
+  gpus_per_node: 2

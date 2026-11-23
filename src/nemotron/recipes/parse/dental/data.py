@@ -1,13 +1,14 @@
 """Generate fictional page images and structured labels."""
 
-from collections import Counter, defaultdict
 import copy
 import hashlib
 import heapq
 import json
-from pathlib import Path
 import random
-from .render import PROMPT, patient_record, render_page
+from collections import Counter, defaultdict
+from pathlib import Path
+
+from .render import PROMPT, patient_record, render_page, require_raqm
 
 ORDER = "MODBIFL"
 
@@ -125,6 +126,7 @@ def context_id(record):
 
 
 def save_pages(records, output, split):
+    require_raqm()
     output = Path(output)
     images = output / "images"
     images.mkdir(parents=True, exist_ok=True)

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -33,6 +34,32 @@ def resolve_model(checkpoint, revision=None):
     snapshot = Path(snapshot_download(str(checkpoint), revision=revision)).resolve()
     resolved_revision = snapshot.name if snapshot.parent.name == "snapshots" else revision
     return snapshot, resolved_revision
+
+
+def materialize_base_model(
+    checkpoint: str | Path, output: str | Path, revision: str | None = None
+) -> tuple[Path, str | None]:
+    """Keep unchanged base bytes beside SFT outputs, independent of the Hub cache.
+
+    Dereference cache symlinks. Hard links retain large immutable weight files
+    without another same-filesystem copy; different filesystems use a real copy.
+    The adapted training view is prepared separately from this base snapshot.
+    """
+    checkpoint, resolved_revision = resolve_model(checkpoint, revision)
+    output = Path(output).absolute()
+    if output.resolve().is_relative_to(checkpoint.resolve()):
+        raise ValueError("SFT output must be outside the source model directory to snapshot its base")
+
+    def link_or_copy(source: str, destination: str) -> str:
+        source_path = Path(source).resolve()
+        try:
+            os.link(source_path, destination)
+        except OSError:
+            shutil.copy2(source_path, destination)
+        return destination
+
+    shutil.copytree(checkpoint, output, symlinks=False, copy_function=link_or_copy)
+    return output, resolved_revision
 
 
 def prepare_model(checkpoint, output, scope="full", processor_source=None, revision=None):
