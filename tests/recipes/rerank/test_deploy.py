@@ -23,7 +23,7 @@ def _profile(**overrides):
 def test_vllm_launch_preserves_native_scoring_and_model_selection(tmp_path, monkeypatch, local_checkpoint):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setenv("HF_TOKEN", "secret-test-value")
-    cfg = _profile(model_dir=tmp_path / "checkpoint" if local_checkpoint else None, detach=True)
+    cfg = _profile(backend="vllm", model_dir=tmp_path / "checkpoint" if local_checkpoint else None, detach=True)
 
     cmd, env = deploy.build_docker_command(cfg)
 
@@ -49,6 +49,21 @@ def test_vllm_launch_preserves_native_scoring_and_model_selection(tmp_path, monk
         assert cmd[launch_index + 1 : launch_index + 3] == [cfg.vllm_model, cfg.model_revision]
         assert cmd[cmd.index("--revision") + 1] == cfg.model_revision
     assert all("NIM_" not in argument for argument in cmd)
+
+
+@pytest.mark.parametrize("local_checkpoint", [False, True])
+def test_nim_profile_selects_checkpoint(tmp_path, monkeypatch, local_checkpoint):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    cfg = _profile(model_dir=tmp_path if local_checkpoint else None)
+    cmd, _ = deploy.build_docker_command(cfg)
+    assert cmd[-1] == "nvcr.io/nim/nvidia/nemotron-rerank:2.4.0"
+    assert "NIM_ENGINE_MODEL_NAME=nvidia/Nemotron-3.5-Rerank-8B-BF16" in cmd
+    if local_checkpoint:
+        assert "NIM_ENGINE_MODEL_PATH=/model" in cmd
+        assert f"{tmp_path}:/model:ro" in cmd
+    else:
+        assert "HF_TOKEN" in cmd
+        assert f"{tmp_path}/cache/nim/weights:/model" in cmd
 
 
 def test_container_bootstrap_uses_checkpoint_template_and_structured_argv(tmp_path, monkeypatch):
@@ -114,6 +129,29 @@ def test_incomplete_checkpoint_fails_before_replacing_service(tmp_path, monkeypa
     assert error.value.code == 1
 
 
+def test_nim_accepts_minimal_checkpoint_before_replacement(tmp_path, monkeypatch):
+    monkeypatch.setattr(deploy, "check_docker", lambda: True)
+    monkeypatch.setattr(deploy, "check_nvidia_docker", lambda: True)
+    cfg = _profile(model_dir=tmp_path)
+    for name in ("config.json", "model.safetensors", "tokenizer_config.json"):
+        (tmp_path / name).touch()
+    monkeypatch.setattr(deploy, "stop_existing_container", lambda *args: pytest.fail("accepted missing tokenizer"))
+    with pytest.raises(SystemExit):
+        deploy.run_deploy(cfg)
+    (tmp_path / "tokenizer_config.json").unlink()
+    (tmp_path / "tokenizer.json").touch()
+
+    class PassedPreflightError(Exception):
+        pass
+
+    def reached_replacement(*args):
+        raise PassedPreflightError
+
+    monkeypatch.setattr(deploy, "stop_existing_container", reached_replacement)
+    with pytest.raises(PassedPreflightError):
+        deploy.run_deploy(cfg)
+
+
 def test_detached_vllm_reports_classify_contract(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     monkeypatch.setattr(deploy, "check_docker", lambda: True)
@@ -124,7 +162,7 @@ def test_detached_vllm_reports_classify_contract(tmp_path, monkeypatch, capsys):
         deploy.subprocess, "run", lambda *args, **kwargs: types.SimpleNamespace(returncode=0, stdout="id")
     )
 
-    result = deploy.run_deploy(_profile(model_dir=None, detach=True))
+    result = deploy.run_deploy(_profile(backend="vllm", model_dir=None, detach=True))
 
     assert result["api_url"] == "http://127.0.0.1:8000/classify"
     output = capsys.readouterr().out

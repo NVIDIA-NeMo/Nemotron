@@ -87,7 +87,8 @@ Preserve these invariants:
   GPU count and checkpoint directory. `max_steps` is the total target; resume
   restores the saved learning-rate schedule.
 - Deploy separately after evaluation: there is no Stage 4 export profile.
-  vLLM serves the consolidated checkpoint; endpoint evaluation uses
+  Nemotron Embed NIM serves the consolidated checkpoint by default. For the
+  vLLM endpoint evaluation, deploy with `backend=vllm` and use
   `eval_nim=true embedding_api_backend=vllm`. Select the Docker GPU with `gpus`,
   for example `gpus='device=0'`; the shell's `CUDA_VISIBLE_DEVICES` does not apply.
 

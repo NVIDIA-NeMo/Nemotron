@@ -32,7 +32,7 @@
 
 The default NIM backend mounts the Stage 4 ONNX/TensorRT export through
 NIM_CUSTOM_MODEL. The Nemotron 3.5 profile serves the consolidated Stage 2
-checkpoint with vLLM, retaining its classifier head and query-document template.
+checkpoint with NIM or vLLM, retaining its classifier head and query-document template.
 Set model_dir=null with that profile to serve the public base checkpoint.
 """
 
@@ -51,6 +51,7 @@ from typing import Annotated, Literal
 from pydantic import BeforeValidator, ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes._retrieval.checkpoint import nim_checkpoint_errors
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "default.yaml"
@@ -90,6 +91,7 @@ class DeployConfig(RecipeSettings):
         default="nvcr.io/nim/nvidia/llama-nemotron-rerank-1b-v2:1.10.0",
         description="NIM container image to use.",
     )
+    nim_engine_model_name: str | None = Field(default=None, description="Model ID for direct-checkpoint NIMs.")
     container_name: str = Field(default="nemotron-rerank-nim", description="Name for the Docker container.")
     replace_existing: bool = Field(default=False, description="Replace an existing container created by this recipe.")
 
@@ -99,7 +101,7 @@ class DeployConfig(RecipeSettings):
             data["artifact_root"]
             / (
                 "stage2_finetune/checkpoints/LATEST/model/consolidated"
-                if data["backend"] == "vllm"
+                if data["backend"] == "vllm" or data["nim_engine_model_name"]
                 else "stage4_export/onnx"
             )
         ),
@@ -289,7 +291,17 @@ def build_docker_command(cfg: DeployConfig) -> tuple[list[str], dict[str, str]]:
     container_cache = cfg.vllm_container_cache_path if cfg.backend == "vllm" else cfg.container_cache_path
     cmd.extend(["-v", f"{host_cache}:{container_cache}"])
 
-    if cfg.backend == "nim":
+    if cfg.backend == "nim" and cfg.nim_engine_model_name:
+        cmd.extend(["-e", f"NIM_ENGINE_MODEL_NAME={cfg.nim_engine_model_name}"])
+        cmd.extend(["-e", f"NIM_SERVER_BIND_ADDR=0.0.0.0:{cfg.container_port}"])
+        if cfg.model_dir is None:
+            weights_cache = host_cache / "weights"
+            weights_cache.mkdir(exist_ok=True)
+            cmd.extend(["-v", f"{weights_cache}:/model", "-e", "HF_TOKEN"])
+        else:
+            cmd.extend(["-e", f"NIM_ENGINE_MODEL_PATH={cfg.container_model_path}"])
+        cmd.append(cfg.nim_image)
+    elif cfg.backend == "nim":
         ngc_key = os.environ.get(cfg.ngc_api_key_env)
         if ngc_key:
             docker_env["NGC_API_KEY"] = ngc_key
@@ -425,13 +437,17 @@ def run_deploy(cfg: DeployConfig) -> dict:
         )
         sys.exit(1)
 
-    if cfg.backend == "vllm" and cfg.model_dir is not None:
-        required = ("config.json", "tokenizer_config.json")
-        missing = [name for name in required if not (cfg.model_dir / name).is_file()]
-        if not any(cfg.model_dir.glob("*.safetensors")):
-            missing.append("*.safetensors")
-        if missing:
-            print(f"Error: incomplete consolidated checkpoint: {', '.join(missing)}", file=sys.stderr)
+    if cfg.model_dir is not None:
+        errors = []
+        if cfg.backend == "nim" and cfg.nim_engine_model_name:
+            errors = nim_checkpoint_errors(cfg.model_dir, tokenizer_files=("tokenizer.json",))
+        elif cfg.backend == "vllm":
+            required = ("config.json", "tokenizer_config.json")
+            errors = [f"missing {name}" for name in required if not (cfg.model_dir / name).is_file()]
+            if not any(cfg.model_dir.glob("*.safetensors")):
+                errors.append("missing *.safetensors")
+        if errors:
+            print(f"Error: incomplete consolidated checkpoint: {', '.join(errors)}", file=sys.stderr)
             sys.exit(1)
 
     print("Stopping existing recipe-owned container (if any)...")
@@ -485,7 +501,7 @@ def run_deploy(cfg: DeployConfig) -> dict:
             else:
                 sample_payload = json.dumps(
                     {
-                        "model": "nvidia/llama-nemotron-rerank-1b-v2",
+                        "model": cfg.nim_engine_model_name or "nvidia/llama-nemotron-rerank-1b-v2",
                         "query": {"text": "what is AI?"},
                         "passages": [{"text": "AI is artificial intelligence"}],
                         "truncate": "END",

@@ -17,7 +17,8 @@ The two profiles use different data preparation and deployment paths:
 For Nemotron 3.5, prepare data with the embedding workflow, then run reranker
 training, evaluation, and deployment explicitly. Use a separate reranker
 `artifact_root` and pass the prepared data paths. The consolidated checkpoint
-deploys through vLLM without Stage 4 export.
+deploys directly through NVIDIA NIM by default. Select `backend=vllm` for vLLM.
+This profile skips Stage 4.
 
 The default Llama workflow includes text generation, preparation, training,
 evaluation, ONNX/TensorRT export, and NIM deployment.

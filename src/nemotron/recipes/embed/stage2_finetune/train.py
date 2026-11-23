@@ -56,7 +56,9 @@ from __future__ import annotations
 import importlib
 import json
 import os
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
@@ -291,8 +293,34 @@ def _automodel_collator_prefix(prefix: str) -> str:
     return prefix.removesuffix(" ")
 
 
-def _repair_vllm_sentence_transformers_metadata(model_dir: Path, cfg: FinetuneConfig) -> None:
-    """Write metadata that vLLM can use for the same pooling/prompt contract as training."""
+_TOKENIZER_FILES = ("tokenizer.json", "tokenizer_config.json")
+
+
+def _tokenizer_source(base_model: str) -> Path:
+    source = Path(base_model)
+    if source.is_dir():
+        return source
+    from huggingface_hub import snapshot_download
+
+    return Path(snapshot_download(base_model, allow_patterns=list(_TOKENIZER_FILES)))
+
+
+def _finalize_embed_checkpoint(model_dir: Path, cfg: FinetuneConfig, tokenizer_source: Path) -> None:
+    """Preserve the base tokenizer and write the training pooling/prompt settings."""
+    # Keep processor changes (for example a control-token normalizer). Restore
+    # the base serialization only where the exported JSON has identical content.
+    with tempfile.TemporaryDirectory(dir=model_dir) as staging:
+        for name in _TOKENIZER_FILES:
+            original = tokenizer_source / name
+            exported = model_dir / name
+            if not original.is_file() or not exported.is_file():
+                continue
+            if json.loads(original.read_bytes()) == json.loads(exported.read_bytes()):
+                staged = Path(staging) / name
+                shutil.copyfile(original, staged)
+                shutil.copymode(exported, staged)
+                staged.replace(exported)
+
     modules_path = model_dir / "modules.json"
     modules = json.loads(modules_path.read_text())
     module_types = {
@@ -701,6 +729,12 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
             emit=_is_rank_zero(),
         )
 
+        tokenizer_source = _tokenizer_source(cfg.base_model)
+        if not Path(cfg.base_model).is_dir():
+            # Use the same immutable Hub snapshot for training and final export.
+            automodel_cfg.model.revision = tokenizer_source.name
+            automodel_cfg.tokenizer.revision = tokenizer_source.name
+
     # Create and run the bi-encoder recipe
     recipe = TrainBiEncoderRecipe(automodel_cfg)
     recipe.setup()
@@ -709,7 +743,7 @@ def run_finetune(cfg: FinetuneConfig) -> Path:
     # Find the final checkpoint
     final_model_dir = cfg.checkpoint_dir / "LATEST" / "model" / "consolidated"
     if _is_rank_zero() and cfg.model_family == "nemotron_3_5":
-        _repair_vllm_sentence_transformers_metadata(final_model_dir, cfg)
+        _finalize_embed_checkpoint(final_model_dir, cfg, tokenizer_source)
 
     print("\nFine-tuning complete!")
     print(f"   Checkpoint: {cfg.checkpoint_dir}")

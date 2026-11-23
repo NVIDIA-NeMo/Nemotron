@@ -4,7 +4,7 @@ Use the `nemotron-3.5` profile with `rerank finetune`, `rerank eval`, and
 `rerank deploy` for
 [Nemotron 3.5 Rerank 8B BF16](https://huggingface.co/nvidia/Nemotron-3.5-Rerank-8B-BF16).
 Prepare data through the embedding workflow described below. Run the rerank
-stages explicitly and deploy the consolidated checkpoint directly with vLLM.
+stages explicitly and deploy the consolidated checkpoint directly with NIM or vLLM.
 Skip Stage 4 export for this model.
 
 Use text-only, image-only, or paired documents. Images are optional.
@@ -129,12 +129,34 @@ the generated query task; use independent labels for broader quality claims.
 
 ## 4. Deploy and Check Served Scores
 
-After local evaluation finishes, start the server with Docker. Select an available
-host GPU with `gpus`; the example uses device `0`. `CUDA_VISIBLE_DEVICES` in your
-shell does not select the container's GPU.
+After local evaluation finishes, choose one backend before starting a container.
+Use NVIDIA NIM for reranking inference or vLLM for the served-score comparison
+below. Select the Docker GPU with `gpus`. The examples use device `0`.
+
+To use the default NIM, install Docker with NVIDIA GPU support and
+[authenticate Docker to NGC](https://docs.nvidia.com/nim/nemo-retriever/reranking/2.4/getting-started.html#docker-login-to-ngc).
+Stage 5 mounts the consolidated checkpoint read-only at `/model` in
+`nvcr.io/nim/nvidia/nemotron-rerank:2.4.0`. Start the service and check its
+readiness before sending requests to `/v1/ranking`.
 
 ```bash
 uv run nemotron rerank deploy -c nemotron-3.5 \
+  artifact_root="$RERANK_RUN" gpus='device=0' detach=true
+curl --fail http://localhost:8000/v1/health/ready
+```
+
+If you already started the example NIM and want to switch to vLLM, release
+its GPU, port, and container name.
+
+```bash
+docker stop nemotron-3.5-rerank
+docker rm nemotron-3.5-rerank
+```
+
+To use vLLM, start the service and verify the endpoint.
+
+```bash
+uv run nemotron rerank deploy -c nemotron-3.5 backend=vllm \
   artifact_root="$RERANK_RUN" \
   gpus='device=0' detach=true
 curl --fail http://localhost:8000/health
@@ -160,8 +182,9 @@ and requests raw logits. Compare `stage3_eval_served/eval_results.json` and
 outputs. Keep the candidate depth, token limits, and image settings fixed. The profiles use a
 4,096-token limit; shorten longer inputs before comparing local and served scores.
 
-Stop the example server when you finish:
+Stop and remove the example server when you finish.
 
 ```bash
 docker stop nemotron-3.5-rerank
+docker rm nemotron-3.5-rerank
 ```

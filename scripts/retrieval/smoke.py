@@ -300,6 +300,7 @@ def main() -> None:
                 "detach": True,
                 "model_dir": output / "embed/stage2_finetune/checkpoints/LATEST/model/consolidated",
                 "nim_model": EMBED_MODEL,
+                "backend": "vllm",
             },
             runtime_stage=eval_stage,
         )

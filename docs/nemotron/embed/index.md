@@ -20,8 +20,8 @@ The profile determines the data format, training environment, and deployment pat
 
 Keep the selected profile and `artifact_root` consistent across stages.
 Nemotron 3.5 preparation, training, and checkpoint evaluation run locally.
-Its consolidated checkpoint deploys directly through vLLM; it has no Stage 4
-export profile. The text guide documents its profiles' execution and export paths.
+Its consolidated checkpoint deploys directly through NVIDIA NIM by default. Select
+`backend=vllm` for vLLM. This profile skips Stage 4. The text guide documents its profiles' execution and export paths.
 
 ## Prepare Data and Configure Generation
 

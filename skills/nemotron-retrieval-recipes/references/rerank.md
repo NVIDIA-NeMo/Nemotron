@@ -44,7 +44,7 @@ and Stage 5 model paths. Input paths remain explicit. Per-stage
 `checkpoint_dir`, `finetuned_model_path`, `output_dir`, and `model_dir`
 overrides take priority.
 Run the stages explicitly; skip Stage 4 and deploy the consolidated model with
-vLLM. The default Llama ONNX/NIM path does not apply to this model.
+Nemotron Rerank NIM. Select `backend=vllm` for vLLM endpoint evaluation.
 
 Preview the training handoff from the execution checkout. Replace the example run
 directories with the prepared embedding run and a separate reranker output:
@@ -81,7 +81,7 @@ For multimodal evaluation:
 - Select portable input with `sdg_input_path=<generation_result.json>` and `retrieval_view=mixed`, or provide independent `eval_data_path` and `image_root` paths.
 - Keep `top_k`, `k_values`, image settings, and the held-out data fixed. Set `first_stage_results_path` to the local evaluation's `first_stage_results.json` to reuse candidates for endpoint comparisons.
 - Read `base_rankings.json` and `finetuned_rankings.json` alongside `eval_results.json`. Scores are raw logits; higher values indicate greater predicted relevance.
-- Deploy with `rerank deploy -c nemotron-3.5 artifact_root=<rerank-run> gpus='device=0' detach=true`, replacing `<rerank-run>` with the training run directory and `0` with the selected host GPU. The shell's `CUDA_VISIBLE_DEVICES` does not apply to Docker. Evaluate that server with the same `artifact_root` and input paths, plus `eval_base=false eval_finetuned=false eval_vllm=true vllm_url=http://localhost:8000`. Set a separate `output_dir` to preserve the local evaluation outputs.
+- Deploy with `rerank deploy -c nemotron-3.5 backend=vllm artifact_root=<rerank-run> gpus='device=0' detach=true`, replacing `<rerank-run>` with the training run directory and `0` with the selected host GPU. The shell's `CUDA_VISIBLE_DEVICES` does not apply to Docker. Evaluate that server with the same `artifact_root` and input paths, plus `eval_base=false eval_finetuned=false eval_vllm=true vllm_url=http://localhost:8000`. Set a separate `output_dir` to preserve the local evaluation outputs.
 - Use `/classify` with query/document messages for multimodal requests. Keep raw logits by setting `use_activation=false` and preserve the checkpoint template with `add_special_tokens=false`.
 - Compare `vllm_rankings.json` and metrics against the local checkpoint. Check processor formatting, score-head identity, image resizing, and sequence limits before attributing drift to training.
 
