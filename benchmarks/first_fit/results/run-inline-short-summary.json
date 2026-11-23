@@ -1,0 +1,58 @@
+[
+  {
+    "case": "short_synthetic",
+    "algorithm": "FirstFitDecreasingPacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.009880018000003474,
+        "cpu_seconds": 0.0090625,
+        "sequences_per_second": 1012143.9050006269,
+        "peak_wset_bytes": 27418624,
+        "seconds_range": [
+          0.009599355999998806,
+          0.011096113999992668
+        ]
+      },
+      "candidate": {
+        "seconds": 0.010051176000015403,
+        "cpu_seconds": 0.009375,
+        "sequences_per_second": 994908.4564815775,
+        "peak_wset_bytes": 27410432,
+        "seconds_range": [
+          0.00939520600000833,
+          0.010777424000007158
+        ]
+      }
+    },
+    "speedup": 0.9829713458393657
+  },
+  {
+    "case": "short_synthetic",
+    "algorithm": "FirstFitShufflePacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.011271658000005118,
+        "cpu_seconds": 0.0103125,
+        "sequences_per_second": 887180.9275969391,
+        "peak_wset_bytes": 27459584,
+        "seconds_range": [
+          0.010466664000014135,
+          0.012003837999982352
+        ]
+      },
+      "candidate": {
+        "seconds": 0.011399988000011945,
+        "cpu_seconds": 0.01,
+        "sequences_per_second": 877193.9058172273,
+        "peak_wset_bytes": 27578368,
+        "seconds_range": [
+          0.009936965999986568,
+          0.011748302000014518
+        ]
+      }
+    },
+    "speedup": 0.9887429706060487
+  }
+]
