@@ -81,6 +81,51 @@ class SequencePacker(ABC):
         pass
 
 
+class _FirstFitIndex:
+    """Dynamically index remaining capacities by their maximum.
+
+    Left-first descent preserves first-fit semantics, including bin order.
+    Storage grows with the number of bins, not the number of sequences.
+    """
+
+    def __init__(self, remaining: list[int]) -> None:
+        self._count = len(remaining)
+        self._size = 1 << (self._count - 1).bit_length()
+        self._tree: list[int | float] = [float("-inf")] * (2 * self._size)
+        self._tree[self._size : self._size + self._count] = remaining
+        for parent in range(self._size - 1, 0, -1):
+            self._tree[parent] = max(self._tree[2 * parent], self._tree[2 * parent + 1])
+
+    def take(self, length: int, capacity: int) -> int:
+        tree = self._tree
+        if tree[1] >= length:
+            node = 1
+            while node < self._size:
+                node *= 2
+                if tree[node] < length:
+                    node += 1
+            bin_idx = node - self._size
+            tree[node] -= length
+        else:
+            if self._count == self._size:
+                old_size = self._size
+                self._size *= 2
+                tree = [float("-inf")] * (2 * self._size)
+                tree[self._size : self._size + self._count] = self._tree[old_size:]
+                for parent in range(self._size - 1, 0, -1):
+                    tree[parent] = max(tree[2 * parent], tree[2 * parent + 1])
+                self._tree = tree
+            bin_idx = self._count
+            self._count += 1
+            node = self._size + bin_idx
+            tree[node] = capacity - length
+        node //= 2
+        while node:
+            tree[node] = max(tree[2 * node], tree[2 * node + 1])
+            node //= 2
+        return bin_idx
+
+
 class FirstFitDecreasingPacker(SequencePacker):
     """First-fit decreasing bin packing algorithm.
 
@@ -103,6 +148,7 @@ class FirstFitDecreasingPacker(SequencePacker):
 
         bins: list[list[int]] = []
         bin_remaining: list[int] = []
+        index: _FirstFitIndex | None = None
         total_tokens = 0
         num_truncated = 0
 
@@ -114,19 +160,26 @@ class FirstFitDecreasingPacker(SequencePacker):
 
             total_tokens += length
 
-            # Find first bin with room
-            placed = False
-            for bin_idx, remaining in enumerate(bin_remaining):
-                if remaining >= length:
+            if index is None:
+                # Keep the original scan for small bin counts: no per-sequence
+                # helper call or tree maintenance in this common case.
+                for bin_idx, remaining in enumerate(bin_remaining):
+                    if remaining >= length:
+                        bins[bin_idx].append(idx)
+                        bin_remaining[bin_idx] -= length
+                        break
+                else:
+                    bins.append([idx])
+                    bin_remaining.append(self.bin_capacity - length)
+                    if len(bins) == 32:
+                        index = _FirstFitIndex(bin_remaining)
+                        bin_remaining.clear()
+            else:
+                bin_idx = index.take(length, self.bin_capacity)
+                if bin_idx == len(bins):
+                    bins.append([idx])
+                else:
                     bins[bin_idx].append(idx)
-                    bin_remaining[bin_idx] -= length
-                    placed = True
-                    break
-
-            # Create new bin if needed
-            if not placed:
-                bins.append([idx])
-                bin_remaining.append(self.bin_capacity - length)
 
         metrics = PackingMetrics(
             num_sequences=len(sequence_lengths),
@@ -166,6 +219,7 @@ class FirstFitShufflePacker(SequencePacker):
 
         bins: list[list[int]] = []
         bin_remaining: list[int] = []
+        index: _FirstFitIndex | None = None
         total_tokens = 0
         num_truncated = 0
 
@@ -177,19 +231,26 @@ class FirstFitShufflePacker(SequencePacker):
 
             total_tokens += length
 
-            # Find first bin with room
-            placed = False
-            for bin_idx, remaining in enumerate(bin_remaining):
-                if remaining >= length:
+            if index is None:
+                # Keep the original scan for small bin counts: no per-sequence
+                # helper call or tree maintenance in this common case.
+                for bin_idx, remaining in enumerate(bin_remaining):
+                    if remaining >= length:
+                        bins[bin_idx].append(idx)
+                        bin_remaining[bin_idx] -= length
+                        break
+                else:
+                    bins.append([idx])
+                    bin_remaining.append(self.bin_capacity - length)
+                    if len(bins) == 32:
+                        index = _FirstFitIndex(bin_remaining)
+                        bin_remaining.clear()
+            else:
+                bin_idx = index.take(length, self.bin_capacity)
+                if bin_idx == len(bins):
+                    bins.append([idx])
+                else:
                     bins[bin_idx].append(idx)
-                    bin_remaining[bin_idx] -= length
-                    placed = True
-                    break
-
-            # Create new bin if needed
-            if not placed:
-                bins.append([idx])
-                bin_remaining.append(self.bin_capacity - length)
 
         metrics = PackingMetrics(
             num_sequences=len(sequence_lengths),
