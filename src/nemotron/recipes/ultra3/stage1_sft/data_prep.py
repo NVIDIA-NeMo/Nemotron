@@ -449,9 +449,11 @@ def run_data_prep_main(
 
     elapsed_sec = time.time() - start_time
 
-    # Build artifact using classmethod
+    # Build artifact using classmethod. Non-default configs get a name suffix
+    # (e.g. -tiny) so the tiny pipeline chain stays isolated, mirroring stage0.
+    config_suffix = f"-{cfg.config_name}" if cfg.config_name != "default" else ""
     sample_suffix = f"?sample={cfg.sample}" if cfg.sample else ""
-    artifact_name = f"ultra3/sft/data{sample_suffix}"
+    artifact_name = f"ultra3/sft/data{config_suffix}{sample_suffix}"
 
     artifact = SFTDataArtifact.from_result(
         format_result=format_result,
