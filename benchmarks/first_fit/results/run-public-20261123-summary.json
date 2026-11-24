@@ -1,0 +1,114 @@
+[
+  {
+    "case": "alpaca_first_1000",
+    "algorithm": "FirstFitDecreasingPacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.001041099996655248,
+        "cpu_seconds": 0.0,
+        "sequences_per_second": 960522.5273390736,
+        "peak_wset_bytes": 27463680,
+        "seconds_range": [
+          0.0009649999992689118,
+          0.0011177000051247887
+        ]
+      },
+      "candidate": {
+        "seconds": 0.0009628999978303909,
+        "cpu_seconds": 0.0,
+        "sequences_per_second": 1038529.4446497071,
+        "peak_wset_bytes": 27508736,
+        "seconds_range": [
+          0.0008404000036534853,
+          0.0010389999952167273
+        ]
+      }
+    },
+    "speedup": 1.0812130013511867
+  },
+  {
+    "case": "alpaca_first_1000",
+    "algorithm": "FirstFitShufflePacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.0011118000038550235,
+        "cpu_seconds": 0.0,
+        "sequences_per_second": 899442.3426269371,
+        "peak_wset_bytes": 27414528,
+        "seconds_range": [
+          0.00091229999816278,
+          0.0011947000020882115
+        ]
+      },
+      "candidate": {
+        "seconds": 0.0009817000027396716,
+        "cpu_seconds": 0.0,
+        "sequences_per_second": 1018641.1298861748,
+        "peak_wset_bytes": 27521024,
+        "seconds_range": [
+          0.0008912999983294867,
+          0.0011944999932893552
+        ]
+      }
+    },
+    "speedup": 1.1325252121343348
+  },
+  {
+    "case": "alpaca_all",
+    "algorithm": "FirstFitDecreasingPacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.692771800000628,
+        "cpu_seconds": 0.640625,
+        "sequences_per_second": 75063.67897762706,
+        "peak_wset_bytes": 33001472,
+        "seconds_range": [
+          0.6693774000013946,
+          0.7464143999968655
+        ]
+      },
+      "candidate": {
+        "seconds": 0.16331360000185668,
+        "cpu_seconds": 0.15625,
+        "sequences_per_second": 318418.0619336589,
+        "peak_wset_bytes": 32890880,
+        "seconds_range": [
+          0.15342429999873275,
+          0.17063699999562232
+        ]
+      }
+    },
+    "speedup": 4.241972499490257
+  },
+  {
+    "case": "alpaca_all",
+    "algorithm": "FirstFitShufflePacker",
+    "rounds": 5,
+    "versions": {
+      "baseline": {
+        "seconds": 0.5413251999998465,
+        "cpu_seconds": 0.484375,
+        "sequences_per_second": 96064.25121168337,
+        "peak_wset_bytes": 32485376,
+        "seconds_range": [
+          0.5147080999959144,
+          0.5862631000054535
+        ]
+      },
+      "candidate": {
+        "seconds": 0.16423130000475794,
+        "cpu_seconds": 0.15625,
+        "sequences_per_second": 316638.78930808837,
+        "peak_wset_bytes": 32616448,
+        "seconds_range": [
+          0.1618095000012545,
+          0.18037579999509035
+        ]
+      }
+    },
+    "speedup": 3.296114686933391
+  }
+]
