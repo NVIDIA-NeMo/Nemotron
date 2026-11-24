@@ -303,7 +303,8 @@ def run_data_prep_main(
         test=result.split_paths.get("test"),
     )
 
-    artifact.name = f"nano3/rl/data{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
+    config_suffix = f"-{cfg.config_name}" if cfg.config_name != "default" else ""
+    artifact.name = f"nano3/rl/data{config_suffix}{'?sample=' + str(cfg.sample) if cfg.sample else ''}"
     # Log to all active backends (manifest + wandb)
     if tracking is not None:
         log_artifact(artifact, tracking)

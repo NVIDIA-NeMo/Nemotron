@@ -487,7 +487,8 @@ def _run_valor32k_pipeline(
 
     # ---- Phase 4: artifact + manifest -------------------------------------
     elapsed_sec = time.time() - start_time
-    artifact_name = f"omni3/sft/valor32k{('?sample=' + str(cfg.sample)) if cfg.sample else ''}"
+    config_suffix = f"-{cfg.config_name}" if cfg.config_name != "default" else ""
+    artifact_name = f"omni3/sft/valor32k{config_suffix}{('?sample=' + str(cfg.sample)) if cfg.sample else ''}"
     source_uri_parts = [cfg.qa_zip_url]
     if cfg.source_tar:
         source_uri_parts.append(f"file://{cfg.source_tar}")
