@@ -41,9 +41,6 @@ run:
 recipe:
   _target_: megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_peft_config
   peft_scheme: lora
-  packed_sequence: null
-  peft: null
-  seq_length: null
 
 peft:
   target_modules:

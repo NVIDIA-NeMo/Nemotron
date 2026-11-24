@@ -28,6 +28,7 @@ from nemo_curator.stages.text.io.writer import ParquetWriter
 from sklearn.cluster import KMeans
 
 from nemotron.steps.byob.runtime.config import ByobConfig
+from nemotron.steps.byob.runtime.deduplication import CallableTokenizerStage
 
 logger = logging.getLogger(__name__)
 
@@ -82,14 +83,28 @@ class TextSemanticOutlierDetectionMCQ:
         Returns:
             pd.DataFrame: DataFrame with embeddings.
         """
+        embedding_stage = EmbeddingCreatorStage(
+            model_identifier=self.config.semantic_outlier_detection_config["model_identifier"],
+            text_field=text_field,
+            embedding_field=embedding_field,
+        )
+        original = embedding_stage.stages[0]
+        embedding_stage.stages[0] = CallableTokenizerStage(
+            model_identifier=original.model_identifier,
+            cache_dir=original.cache_dir,
+            hf_token=original.hf_token,
+            text_field=original.text_field,
+            max_chars=original.max_chars,
+            max_seq_length=original.max_seq_length,
+            padding_side=original.padding_side,
+            sort_by_length=original.sort_by_length,
+            unk_token=original.unk_token,
+            transformers_init_kwargs=original.transformers_init_kwargs,
+        )
         embedding_pipeline = Pipeline(
             stages=[
                 ParquetReader(file_paths=input_path, _generate_ids=False),
-                EmbeddingCreatorStage(
-                    model_identifier=self.config.semantic_outlier_detection_config["model_identifier"],
-                    text_field=text_field,
-                    embedding_field=embedding_field,
-                ),
+                embedding_stage,
                 ParquetWriter(path=output_path, fields=output_fields),
             ],
             name="embedding_pipeline",

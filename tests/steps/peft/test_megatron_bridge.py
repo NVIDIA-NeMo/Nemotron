@@ -32,11 +32,9 @@ def test_lightning35_overlay_inherits_default_yaml() -> None:
     step = step_dir(__file__, "peft", "megatron_bridge")
     cfg = load_config(step / "config" / "lightning35.yaml")
     assert "defaults" not in cfg
-    assert cfg.recipe._target_ == (
-        "megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_peft_config"
-    )
-    assert cfg.recipe.packed_sequence is None
-    assert cfg.recipe.peft is None
+    assert cfg.recipe._target_ == ("megatron.bridge.recipes.nemotronh.nemotron_3_5_lightning_peft_config")
+    assert "packed_sequence" not in cfg.recipe
+    assert "peft" not in cfg.recipe
     assert cfg.peft.type == "lora"
     assert cfg.peft.dim == 32
     assert "in_proj" in list(cfg.peft.target_modules)

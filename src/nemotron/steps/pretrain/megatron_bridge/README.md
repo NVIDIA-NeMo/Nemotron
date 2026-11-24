@@ -17,9 +17,8 @@ Start from `config/tiny.yaml` for launch validation and `config/default.yaml`
 for the production-shaped topology. In a project overlay, developers usually
 change:
 
-- `dataset.data_paths`: prep-emitted `blend.json`, not packed Parquet.
-- `seq_length`, `recipe.seq_length`, `model.seq_length`, and dataset sequence
-  length: keep all values aligned.
+- `per_split_data_args_path`: prep-emitted `blend.json`, not packed Parquet.
+- `model.seq_length` and `dataset.seq_length`: keep both values aligned.
 - `load_hf_weights` or checkpoint fields: set explicitly for CPT or resume.
 - `train.micro_batch_size`, `train.global_batch_size`, and TP/PP/CP/EP sizes:
   size them against the env profile.
@@ -31,8 +30,9 @@ Example shape:
 ```bash
 uv run nemotron steps run pretrain/megatron_bridge \
   -c <project>/config/pretrain_megatron_bridge.yaml \
-  dataset.data_paths=<prep-output>/blend.json \
-  seq_length=<planned-seq-length>
+  per_split_data_args_path=<prep-output>/blend.json \
+  model.seq_length=<planned-seq-length> \
+  dataset.seq_length=<planned-seq-length>
 ```
 
 Related patterns:
@@ -42,11 +42,16 @@ Related patterns:
 
 ## Config Nuances
 
-- Keep `recipe.seq_length`, `model.seq_length`, and `dataset.seq_length` identical; Bridge validates the model and dataset values before setup.
-- Set `dataset.data_paths` to the bin/idx `blend.json` from `data_prep/pretrain_prep`, not SFT packed Parquet.
+- Keep `model.seq_length` and `dataset.seq_length` identical. The default recipe
+  factory takes no sequence-length or parallelism kwargs.
+- Set top-level `per_split_data_args_path` to the bin/idx `blend.json` from `data_prep/pretrain_prep`, not SFT packed Parquet.
 - For Qwen/Nemotron MoE runs, keep `model.sequence_parallel: true` with tensor parallelism.
 - If Transformer Engine userbuffers are enabled on a system without CUDA multicast support, set `run.env.env_vars.UB_SKIPMC: "1"` or default it in `step.py` before Bridge initialization.
 - Use `train.global_batch_size` as a multiple of data-parallel size; start with `train.micro_batch_size: 1` when validating a new parallelism shape.
+
+Top-level `per_split_data_args_path` uses Bridge's native parser and overrides the
+factory/dataset blend fields; set it to `null` to retain those fields instead.
+The legacy `tiny` factory also needs aligned `recipe.seq_length`.
 
 ## Run It
 
