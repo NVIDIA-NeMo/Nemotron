@@ -1,0 +1,117 @@
+# Runtime paths and step counts are filled by the launcher.
+recipe: FinetuneRecipeForVLM
+step_scheduler:
+  global_batch_size: 16
+  local_batch_size: 1
+  val_every_steps: 125
+  num_epochs: 1
+  save_checkpoint_every_epoch: false
+dist_env:
+  backend: cpu:gloo,cuda:nccl
+  timeout_minutes: 30
+seed: 42
+model:
+  _target_: nemo_automodel.NeMoAutoModelForImageTextToText.from_pretrained
+  pretrained_model_name_or_path: ${oc.env:MODEL_PATH}
+  trust_remote_code: true
+  num_nextn_predict_layers: 0
+  torch_dtype: torch.bfloat16
+  backend:
+    _target_: nemo_automodel.components.models.common.BackendConfig
+    attn: sdpa
+    linear: torch
+    rms_norm: torch_fp32
+    rope_fusion: false
+    dispatcher: deepep
+    experts: torch_mm
+    fake_balanced_gate: false
+    enable_hf_state_dict_adapter: true
+processor:
+  _target_: transformers.AutoProcessor.from_pretrained
+  pretrained_model_name_or_path: ${oc.env:MODEL_PATH}
+  trust_remote_code: true
+  fix_mistral_regex: true
+checkpoint:
+  enabled: true
+  checkpoint_dir: ${oc.env:CHECKPOINT_DIR}
+  model_save_format: safetensors
+  save_consolidated: final
+  cpu_offload: true
+  max_recent_checkpoints: 1
+distributed:
+  strategy: fsdp2
+  tp_size: 1
+  cp_size: 1
+  pp_size: 1
+  ep_size: 4
+  sequence_parallel: false
+  activation_checkpointing: true
+  reshard_after_forward: true
+  defer_fsdp_grad_sync: false
+  offload_policy: null
+  moe:
+    reshard_after_forward: true
+  multimodal:
+    frozen_sharding: root
+freeze_config:
+  freeze_modules:
+  - path: language_model.model.embed_tokens
+  - path: language_model.lm_head
+  freeze_vision_tower: false
+  freeze_video_embedder: true
+  freeze_audio_tower: true
+  freeze_language_model: false
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+dataset:
+  _target_: rxncaption_tuning_adapter.make_tuning_dataset
+  path_or_dataset: ${oc.env:DATA_DIR}
+  split: train
+  validation_size: 400
+  validation_seed: 42
+  filter_contaminated: true
+  remove_empty_text: true
+  verify_images: true
+  include_system_prompt: false
+  medium_repeats: 2
+  dense_repeats: 3
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.vlm.collate_fns.nemotron_omni_collate_fn
+    max_length: 6144
+  drop_last: true
+validation_dataset:
+  _target_: rxncaption_tuning_adapter.make_tuning_dataset
+  path_or_dataset: ${oc.env:DATA_DIR}
+  split: validation
+  validation_size: 400
+  validation_seed: 42
+  filter_contaminated: true
+  remove_empty_text: true
+  verify_images: true
+  include_system_prompt: false
+  medium_repeats: 1
+  dense_repeats: 1
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  num_workers: 0
+  collate_fn:
+    _target_: nemo_automodel.components.datasets.vlm.collate_fns.nemotron_omni_collate_fn
+    max_length: 6144
+optimizer:
+  _target_: nemo_automodel.components.optim.optimizer.FusedAdamConfig
+  lr: 3.0e-06
+  weight_decay: 0.01
+  betas:
+  - 0.9
+  - 0.95
+  master_weights: true
+  master_weight_dtype: float32
+lr_scheduler:
+  init_lr: 3.0e-06
+  max_lr: 3.0e-06
+  min_lr: 3.0e-06
+  lr_warmup_steps: 0
+  lr_decay_style: constant
