@@ -19,11 +19,11 @@
       "prompt": "I already have a Nemotron 3.5 embedding SDG bundle and its mined, unrolled training data. I want to fine-tune Nemotron 3.5 Rerank 8B in a separate run directory. Can I reuse those inputs and run the usual rerank pipeline through export?",
       "expected_skill": "nemotron-retrieval-recipes",
       "expected_script": null,
-      "expected_output": "Reuse the embedding preparation output through train_data_path and preserve the relative corpus references recorded in that JSON, then select rerank -c nemotron-3.5. Keep a separate rerank artifact_root through finetune, eval, and deploy; this root does not relocate the explicit input data. Run these stages individually and run training/eval locally. Evaluate the portable manifest with sdg_input_path and retrieval_view=mixed, or independent evaluation data. Skip export and deploy the consolidated checkpoint with vLLM. Start with stage dry-runs and verify model, data, and resource requirements before execution.",
+      "expected_output": "Reuse the embedding preparation output through train_data_path and preserve the relative corpus references recorded in that JSON, then select rerank -c nemotron-3.5. Keep a separate rerank artifact_root through finetune, eval, and deploy; this root does not relocate the explicit input data. Run these stages individually and run training/eval locally. Evaluate the portable manifest with sdg_input_path and retrieval_view=mixed, or independent evaluation data. Skip export and deploy the consolidated checkpoint with Nemotron Rerank NIM. Start with stage dry-runs and verify model, data, and resource requirements before execution.",
       "assertions": [
         "Reuses embedding SDG/preparation output rather than proposing a nonexistent Nemotron 3.5 rerank SDG/prep pipeline",
         "Keeps input paths explicit and carries a separate rerank artifact_root through training, evaluation, and deployment",
-        "Uses individual Nemotron 3.5 stages, local training/evaluation, and direct consolidated-checkpoint vLLM deployment without export",
+        "Uses individual Nemotron 3.5 stages, local training/evaluation, and direct consolidated-checkpoint NIM deployment without export",
         "Proposes stage dry-runs before execution and identifies the portable manifest and mixed view for evaluation"
       ]
     },

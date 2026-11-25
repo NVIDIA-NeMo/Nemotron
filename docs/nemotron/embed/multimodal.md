@@ -93,6 +93,11 @@ No embedding checkpoint override is required for the 1B model.
 `NEMOTRON_3_5_EMBED_MODEL` changes the checkpoint selected for mining, training,
 and base evaluation. It does not update other profile settings.
 
+For a fine-tuned 8B checkpoint, pass
+`nim_engine_model_name=nvidia/Nemotron-3.5-Embed-8B-BF16` to `embed deploy`
+when using NIM. The engine ID selects the checkpoint architecture. The
+`nim_model` setting controls the name that clients send in requests.
+
 For an alternate checkpoint, match `nim_embedding_dimension` to its output size
 when evaluating a served endpoint. Also set `mining_embedding_dimension` when
 using `mining_backend=vllm`. For example, the
@@ -240,13 +245,36 @@ of generalization. Rebuild the retrieval index after changing checkpoints.
 
 ## Serve the Consolidated Checkpoint
 
-Skip Stage 4: `nemotron-3.5` has no export profile. Install Docker with NVIDIA
-GPU support, then preview and launch vLLM using the same artifact root:
+Stage 5 serves the consolidated Stage 2 checkpoint directly. Choose one backend
+before you start a container. Use NVIDIA NIM for embedding inference. Choose
+vLLM for the Stage 3 evaluation below when the corpus includes images.
+
+To use the default NIM, install Docker with NVIDIA GPU support and
+[authenticate Docker to NGC](https://docs.nvidia.com/nim/nemo-retriever/embedding/2.4/getting-started.html#docker-login-to-ngc).
+The recipe mounts the checkpoint read-only at `/model` in
+`nvcr.io/nim/nvidia/nemotron-embed:2.4.1`. Start the service and check its
+readiness before sending requests to `/v1/embeddings`.
 
 ```bash
-uv run nemotron embed deploy -c nemotron-3.5 -d \
-  artifact_root="$EMBED_RUN" gpus='device=0'
 uv run nemotron embed deploy -c nemotron-3.5 \
+  artifact_root="$EMBED_RUN" gpus='device=0' detach=true
+curl --fail http://localhost:8000/v1/health/ready
+```
+
+If you already started the example NIM and want to switch to vLLM, release
+its GPU, port, and container name.
+
+```bash
+docker stop nemotron-3.5-embed
+docker rm nemotron-3.5-embed
+```
+
+To use vLLM, start the service and verify the endpoint.
+
+```bash
+uv run nemotron embed deploy -c nemotron-3.5 backend=vllm -d \
+  artifact_root="$EMBED_RUN" gpus='device=0'
+uv run nemotron embed deploy -c nemotron-3.5 backend=vllm \
   artifact_root="$EMBED_RUN" gpus='device=0' detach=true
 curl --fail-with-body http://localhost:8000/v2/embed \
   -H 'Content-Type: application/json' \
@@ -256,7 +284,7 @@ curl --fail-with-body http://localhost:8000/v2/embed \
 Select the Docker GPU explicitly with `gpus`; `CUDA_VISIBLE_DEVICES` in your
 shell does not select the container's GPU. The example uses host GPU `0`.
 
-The profile mounts `stage2_finetune/checkpoints/LATEST/model/consolidated` at
+With `backend=vllm`, Stage 5 mounts `stage2_finetune/checkpoints/LATEST/model/consolidated` at
 `/model` in `vllm/vllm-openai:v0.31.0`. Detached launch waits for the health check.
 Expect a finite 2,048-dimensional vector. The checkpoint supplies query/document
 prompts; do not add prefixes yourself. For image or paired requests, use the
@@ -270,7 +298,8 @@ uv run nemotron embed eval -c nemotron-3.5 artifact_root="$EMBED_RUN" \
   embedding_api_backend=vllm output_dir="$EMBED_RUN/stage3_eval_served"
 ```
 
-Despite its name, `eval_nim=true` enables either API backend. Match `nim_url` and
+Set `eval_nim=true` to evaluate a served endpoint. The NIM adapter supports
+text evaluation. Use the vLLM adapter for image or mixed-view evaluation. Match `nim_url` and
 `nim_model` to the server if you change the default port or alias. The profile's
 `vllm_max_model_len=8192` is separate from the 512-token query and 4096-token
 passage limits. `embedding_api_truncate=NONE` rejects overlength endpoint input;
@@ -344,6 +373,7 @@ before retrying. A dry run does not check inputs, endpoint access, or GPU memory
 | Mining runs out of GPU memory | Reduce `query_embedding_batch_size` and `document_embedding_batch_size`; inspect sequence lengths and image sizes. |
 | Training runs out of GPU memory | Reduce `local_batch_size` while retaining compatible global batch and device counts. Record preprocessing changes. |
 | Image attention fails | Keep `attn_implementation=sdpa`. |
+| NIM reports `tokenizer artifact mismatch` for an older export | Compare `tokenizer.json` with the file from the exact training base revision. If the JSON content matches, restore the original file bytes and redeploy. If tokenization changed during training, keep the exported tokenizer and use a compatible backend such as vLLM. |
 | Evaluation has no base result | Set `eval_base=true`. |
 | Served results differ | Check checkpoint identity, image paths, processor settings, dimensions, and truncation; retain retry diagnostics. |
 

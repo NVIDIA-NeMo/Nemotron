@@ -10,7 +10,7 @@ refer to [Nemotron Reranking Fine-Tuning](index.md).
 | Model | Profile | Recipe Scope |
 | --- | --- | --- |
 | Llama Nemotron Rerank 1B v2 | `default` | Text data generation, preparation, training, evaluation, export, and NIM deployment |
-| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Training, evaluation, and vLLM deployment for text, images, or paired documents](multimodal.md) |
+| Nemotron 3.5 Rerank 8B BF16 | `nemotron-3.5` | [Training, evaluation, and deployment with NVIDIA NIM or vLLM for text, images, or paired documents](multimodal.md) |
 
 For a first run, [check the prerequisites](#prerequisites),
 [install the CLI](#installation), and [prepare your corpus](#preparing-your-corpus).

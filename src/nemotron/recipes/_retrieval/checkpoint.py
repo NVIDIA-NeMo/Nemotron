@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Advisory checkpoint resource checks for full Nemotron 3.5 fine-tuning."""
+"""Checkpoint storage and deployment checks for retrieval recipes."""
 
 import json
 import shutil
@@ -178,3 +178,56 @@ def report_checkpoint_resources(
         print("Warning: available disk is below estimated checkpoint headroom; use a larger checkpoint_dir.")
     if memory is not None and memory < optimizer_bytes:
         print("Warning: available host RAM is below estimated optimizer staging; checkpoint saving may fail.")
+
+
+def nim_checkpoint_errors(model_dir: Path, *, tokenizer_files: tuple[str, ...]) -> list[str]:
+    """Validate the local files consumed by the Nemotron 3.5 NIMs before launch."""
+    root = model_dir.resolve()
+
+    def mounted_file(name: str) -> bool:
+        # Docker mounts only this directory. Follow relative links as they
+        # would resolve under /model, rejecting host-absolute or escaping links.
+        path = root
+        pending = list(reversed(Path(name).parts))
+        links = 0
+        while pending:
+            part = pending.pop()
+            if part == "..":
+                if path == root:
+                    return False
+                path = path.parent
+                continue
+            path = path / part
+            if path.is_symlink():
+                target = path.readlink()
+                links += 1
+                if target.is_absolute() or links > 40:
+                    return False
+                path = path.parent
+                pending.extend(reversed(target.parts))
+        return path.is_file()
+
+    errors = [
+        f"missing {name} inside model mount" for name in ("config.json", *tokenizer_files) if not mounted_file(name)
+    ]
+    index = model_dir / "model.safetensors.index.json"
+    if not index.is_file():
+        if not mounted_file("model.safetensors"):
+            errors.append("missing model.safetensors or model.safetensors.index.json")
+        return errors
+
+    try:
+        if not mounted_file(index.name):
+            raise ValueError("index points outside model mount")
+        manifest = json.loads(index.read_bytes())
+        weights = manifest.get("weight_map") if isinstance(manifest, dict) else None
+        if not isinstance(weights, dict) or not weights:
+            raise ValueError("expected a nonempty weight_map")
+        for name in set(weights.values()):
+            if not isinstance(name, str) or Path(name).is_absolute() or ".." in Path(name).parts:
+                raise ValueError("expected relative shard filenames in weight_map")
+            if not mounted_file(name):
+                errors.append(f"missing shard {name} inside model mount")
+    except (OSError, ValueError, TypeError) as exc:
+        errors.append(f"invalid {index.name}: {exc}")
+    return errors

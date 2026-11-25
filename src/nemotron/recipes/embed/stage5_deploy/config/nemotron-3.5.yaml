@@ -1,12 +1,14 @@
 # Deployment profile for Nemotron 3.5 Embed 1B.
-# This profile serves the consolidated checkpoint through vLLM.
+# This profile serves the consolidated checkpoint with NIM (or backend=vllm).
 
 artifact_root: ./output/embed/nemotron-3.5
 model_family: nemotron_3_5
-backend: vllm
+backend: nim
 
-nim_image: null
+nim_image: nvcr.io/nim/nvidia/nemotron-embed:2.4.1
+model_path_env: NIM_ENGINE_MODEL_PATH
 vllm_image: vllm/vllm-openai:v0.31.0
+nim_engine_model_name: nvidia/Nemotron-3.5-Embed-1B-BF16
 nim_model: ${oc.env:NEMOTRON_3_5_EMBED_MODEL,nvidia/Nemotron-3.5-Embed-1B-BF16}
 vllm_runner: pooling
 vllm_max_model_len: 8192

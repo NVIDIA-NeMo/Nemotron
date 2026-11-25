@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import sys
+import tomllib
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
-import tomllib
 import yaml
 
 from nemo_runspec.config import load_pydantic_config
@@ -39,6 +39,9 @@ def _install_recipe(
     recipe_name: str,
     captured: dict[str, Any],
 ) -> None:
+    if recipe_name == "TrainBiEncoderRecipe":
+        monkeypatch.setattr(embed_train, "_tokenizer_source", lambda model: Path("/snapshots/test-commit"))
+
     class Recipe:
         def __init__(self, cfg: Any) -> None:
             captured["config"] = cfg
@@ -143,7 +146,8 @@ def test_vl_flash_adamw_uses_quantized_states_and_full_master_weights(
     assert raw["model"]["torch_dtype"] == "bfloat16"
 
 
-def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path) -> None:
+@pytest.mark.parametrize("changed", [None, "tokenizer.json", "tokenizer_config.json"])
+def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path, changed: str | None) -> None:
     (tmp_path / "1_Pooling").mkdir()
     (tmp_path / "modules.json").write_text(
         json.dumps(
@@ -168,7 +172,20 @@ def test_embed_vl_export_metadata_is_vllm_compatible(tmp_path: Path) -> None:
         passage_prefix="passage: ",
     )
 
-    embed_train._repair_vllm_sentence_transformers_metadata(tmp_path, cfg)
+    source = tmp_path / "base"
+    source.mkdir()
+    for name in ("tokenizer.json", "tokenizer_config.json"):
+        (source / name).write_bytes(b'{ "value": "\\u00e9" }\n')
+        (tmp_path / name).write_text('{"value":"é"}')
+
+    if changed:
+        (tmp_path / changed).write_text('{"normalizer":"training-specific"}')
+
+    embed_train._finalize_embed_checkpoint(tmp_path, cfg, source)
+
+    for name in ("tokenizer.json", "tokenizer_config.json"):
+        expected = b'{"normalizer":"training-specific"}' if name == changed else (source / name).read_bytes()
+        assert (tmp_path / name).read_bytes() == expected
 
     modules = json.loads((tmp_path / "modules.json").read_text())
     pooling = json.loads((tmp_path / "1_Pooling/config.json").read_text())
@@ -185,7 +202,7 @@ def test_embed_vl_runtime_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     base = _namespace_config()
     _install_recipe(monkeypatch, recipe_name="TrainBiEncoderRecipe", captured=captured)
     monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
-    monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
+    monkeypatch.setattr(embed_train, "_finalize_embed_checkpoint", lambda model_dir, cfg, source: None)
     cfg = embed_train.FinetuneConfig(
         model_family="nemotron_3_5",
         base_model="mistralai/Ministral-3-3B-Instruct-2512-BF16",
@@ -210,6 +227,7 @@ def test_embed_vl_runtime_wiring(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     automodel = captured["config"]
     assert automodel.dataset.data_dir_list == [str(cfg.train_data_path)]
     assert automodel.dataset.use_text_in_document is True
+    assert automodel.tokenizer.revision == automodel.model.revision == "test-commit"
     assert automodel.tokenizer.p_max_length == 4096
     assert automodel.tokenizer.query_prefix == "query:"
     assert automodel.model.do_distributed_inbatch_negative is False
@@ -257,7 +275,7 @@ def test_embed_vl_runtime_omits_checkpoint_owned_processor_overrides(
     base = _namespace_config()
     _install_recipe(monkeypatch, recipe_name="TrainBiEncoderRecipe", captured=captured)
     monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
-    monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
+    monkeypatch.setattr(embed_train, "_finalize_embed_checkpoint", lambda model_dir, cfg, source: None)
     cfg = embed_train.FinetuneConfig(
         model_family="nemotron_3_5",
         train_data_path=_mined_training_file(tmp_path),
@@ -290,7 +308,7 @@ def test_embed_exact_step_dotlist_reaches_native_scheduler(
     base = _namespace_config()
     _install_recipe(monkeypatch, recipe_name="TrainBiEncoderRecipe", captured=captured)
     monkeypatch.setattr(embed_train, "_load_automodel_config", lambda cfg, node: (base, "fused_adam"))
-    monkeypatch.setattr(embed_train, "_repair_vllm_sentence_transformers_metadata", lambda model_dir, cfg: None)
+    monkeypatch.setattr(embed_train, "_finalize_embed_checkpoint", lambda model_dir, cfg, source: None)
     monkeypatch.setattr(
         EmbedModelArtifact,
         "save",
@@ -394,7 +412,7 @@ def test_preview_eval_and_deploy_profiles_are_vllm_only(monkeypatch: pytest.Monk
     assert embed_eval.query_max_length == 512
     assert embed_eval.embedding_api_backend == "vllm"
     assert embed_eval.nim_model == "nvidia/test-nemotron-3.5-embed"
-    assert embed_deploy.backend == "vllm"
+    assert embed_deploy.backend == "nim"
     assert embed_deploy.vllm_runner == "pooling"
     assert embed_deploy.vllm_max_model_len == 8192
 

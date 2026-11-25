@@ -140,11 +140,6 @@ def test_vl_vllm_docker_contract_includes_validated_runtime_overrides(monkeypatc
     assert command[command.index("--max-model-len") + 1] == "8192"
 
 
-def test_vl_deployment_rejects_nim_backend() -> None:
-    with pytest.raises(ValueError, match="supports backend=vllm only"):
-        _deploy_config(model_family="nemotron_3_5", backend="nim")
-
-
 def test_huggingface_checkpoint_artifact_validation(tmp_path) -> None:
     model_dir = tmp_path / "checkpoint"
     model_dir.mkdir()
@@ -180,6 +175,35 @@ def test_huggingface_checkpoint_fingerprint_validation(tmp_path) -> None:
     )
 
     assert deploy.model_artifact_errors(cfg) == ["config.json num_hidden_layers=16 (expected 18)"]
+
+
+def test_nim_embed_engine_and_checkpoint_preflight(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    for name in ("config.json", "tokenizer.json", "tokenizer_config.json", "shard-1.safetensors"):
+        (tmp_path / name).touch()
+    (tmp_path / "config.json").write_text(json.dumps({"model_type": "mistral3", "text_config": {"hidden_size": 4096}}))
+    engine = "nvidia/Nemotron-3.5-Embed-8B-BF16"
+    cfg = _deploy_config(model_family="nemotron_3_5", nim_engine_model_name=engine, model_dir=tmp_path)
+    assert deploy.model_artifact_errors(cfg) == ["missing model.safetensors or model.safetensors.index.json"]
+    index = tmp_path / "model.safetensors.index.json"
+    index.write_text(json.dumps({"weight_map": {"a": "shard-1.safetensors", "b": "shard-2.safetensors"}}))
+    assert deploy.model_artifact_errors(cfg) == ["missing shard shard-2.safetensors inside model mount"]
+    (tmp_path / "shard-2.safetensors").touch()
+    assert deploy.model_artifact_errors(cfg) == []
+    assert f"NIM_ENGINE_MODEL_NAME={engine}" in deploy.build_docker_command(cfg)
+    shard = tmp_path / "shard-2.safetensors"
+    shard.unlink()
+    shard.symlink_to(tmp_path / "shard-1.safetensors")
+    assert deploy.model_artifact_errors(cfg) == ["missing shard shard-2.safetensors inside model mount"]
+    shard.unlink()
+    shard.symlink_to("shard-1.safetensors")
+    assert deploy.model_artifact_errors(cfg) == []
+    wrong_engine = _deploy_config(model_family="nemotron_3_5", model_dir=tmp_path)
+    assert "hidden_size=2048" in deploy.model_artifact_errors(wrong_engine)[0]
+    (tmp_path / "tokenizer_config.json").unlink()
+    assert deploy.model_artifact_errors(cfg) == ["missing tokenizer_config.json inside model mount"]
+    index.write_text("{}")
+    assert "expected a nonempty weight_map" in deploy.model_artifact_errors(cfg)[-1]
 
 
 def test_health_check_retries_connection_reset(monkeypatch) -> None:
@@ -351,8 +375,10 @@ def test_vl_profile_preserves_checkpoint_config(tmp_path, monkeypatch):
     path = Path(deploy.__file__).parent / "config/nemotron-3.5.yaml"
     cfg = deploy.DeployConfig.model_validate(OmegaConf.to_container(load_config(path), resolve=True))
     command = deploy.build_docker_command(cfg)
-    assert "--hf-overrides" not in command
-    assert "--trust-remote-code" not in command
+    assert command[-1] == "nvcr.io/nim/nvidia/nemotron-embed:2.4.1"
+    assert "NIM_ENGINE_MODEL_PATH=/model" in command
+    assert "NIM_ENGINE_MODEL_NAME=nvidia/Nemotron-3.5-Embed-1B-BF16" in command
+    assert "NIM_SERVER_SERVED_MODEL_NAME=operator/generic-vl-checkpoint" in command
 
 
 def test_foreground_server_failure_is_not_reported_as_success(monkeypatch, tmp_path) -> None:

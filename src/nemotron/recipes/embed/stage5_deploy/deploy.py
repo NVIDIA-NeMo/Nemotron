@@ -64,6 +64,7 @@ from typing import Annotated, Literal
 from pydantic import BeforeValidator, ConfigDict, Field, model_validator
 
 from nemo_runspec.config.pydantic_loader import RecipeSettings, load_config, parse_config_and_overrides
+from nemotron.recipes._retrieval.checkpoint import nim_checkpoint_errors
 
 STAGE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = STAGE_PATH / "config" / "nemotron-3.yaml"
@@ -109,6 +110,10 @@ class DeployConfig(RecipeSettings):
     nim_model: str = Field(
         default="nvidia/nemotron-3-embed-1b",
         description="Model identifier advertised by the selected embedding service.",
+    )
+    nim_engine_model_name: Literal["nvidia/Nemotron-3.5-Embed-1B-BF16", "nvidia/Nemotron-3.5-Embed-8B-BF16"] = Field(
+        default="nvidia/Nemotron-3.5-Embed-1B-BF16",
+        description="BF16 checkpoint architecture selected by the Nemotron 3.5 NIM.",
     )
     container_name: str = Field(default="nemotron-embed", description="Name for the Docker container.")
 
@@ -199,8 +204,6 @@ class DeployConfig(RecipeSettings):
             raise ValueError("nim_image must be nonempty when backend=nim")
         if self.backend == "vllm" and not self.vllm_image.strip():
             raise ValueError("vllm_image must be set when backend=vllm")
-        if self.model_family == "nemotron_3_5" and self.backend != "vllm":
-            raise ValueError("model_family=nemotron_3_5 currently supports backend=vllm only")
         return self
 
     @property
@@ -298,6 +301,12 @@ def build_docker_command(cfg: DeployConfig) -> list[str]:
         # NIM 2.2.0+ supplies its own model name and accepts staged weights here.
         cmd.extend(["-e", f"{cfg.model_path_env}={cfg.container_model_path}"])
 
+        if cfg.model_family == "nemotron_3_5":
+            cmd.extend(["-e", f"NIM_ENGINE_MODEL_NAME={cfg.nim_engine_model_name}"])
+            cmd.extend(["-e", "NIM_ENGINE_PRECISION=fp16"])
+            cmd.extend(["-e", f"NIM_SERVER_SERVED_MODEL_NAME={cfg.nim_model}"])
+            cmd.extend(["-e", f"NIM_SERVER_BIND_ADDR=0.0.0.0:{cfg.container_port}"])
+
         if cfg.max_seq_len is not None:
             max_seq_len_env = (
                 "NIM_PIPELINE_MAX_SEQ_LEN" if cfg.model_path_env == "NIM_ENGINE_MODEL_PATH" else "NIM_MAX_SEQ_LEN"
@@ -363,6 +372,21 @@ def build_docker_environment(cfg: DeployConfig) -> dict[str, str]:
 
 def model_artifact_errors(cfg: DeployConfig) -> list[str]:
     """Return missing or incompatible model artifact diagnostics."""
+    if cfg.backend == "nim" and cfg.model_family == "nemotron_3_5":
+        errors = nim_checkpoint_errors(cfg.model_dir, tokenizer_files=("tokenizer.json", "tokenizer_config.json"))
+        config_path = cfg.model_dir / "config.json"
+        if config_path.is_file():
+            try:
+                config = json.loads(config_path.read_bytes())
+                hidden_size = config["text_config"]["hidden_size"]
+                expected = 2048 if cfg.nim_engine_model_name == "nvidia/Nemotron-3.5-Embed-1B-BF16" else 4096
+                if config["model_type"] != "mistral3" or hidden_size != expected:
+                    errors.append(
+                        f"{cfg.nim_engine_model_name} requires mistral3 with text_config.hidden_size={expected}"
+                    )
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                errors.append(f"invalid model configuration in config.json: {exc}")
+        return errors
     if cfg.backend == "vllm" or cfg.model_path_env in {"NIM_ENGINE_MODEL_PATH", "NIM_MODEL_PATH"}:
         errors: list[str] = []
         config_path = cfg.model_dir / "config.json"
