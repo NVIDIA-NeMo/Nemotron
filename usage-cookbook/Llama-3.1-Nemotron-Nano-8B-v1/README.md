@@ -18,6 +18,9 @@ guide, customized for the Nemotron model with tool calling support.
 - Serving stack: `vLLM v0.19.0`
 - Helm chart: `vllm/vllm-stack` 0.1.10
 - Inference API: OpenAI-compatible `/v1`
+- Node cloud-init (`oci-growfs` + OKE bootstrap) re-validated 2026-09-09 on
+  OKE v1.35.2 with the Oracle Linux 9.8 GPU image: a 250 GB boot volume
+  reported ~238 GiB of ephemeral storage with no manual expansion
 
 ## Validated capabilities
 
@@ -315,6 +318,20 @@ for CANDIDATE in $(oci iam availability-domain list \
 done
 [[ -z "${AD}" ]] && { echo "No AD with A10 capacity in ${OCI_REGION}"; exit 1; }
 
+# Node cloud-init: grow the root filesystem to the full boot volume, then run
+# the standard OKE bootstrap. OKE node images ship a ~30-47 GB root partition
+# regardless of the boot volume size you request; without this step the vLLM
+# engine image (~10 GB), router image (~10.5 GB), and model weights (~16 GB)
+# get pods evicted for ephemeral storage. This is the same cloud-init that
+# Console-created node pools and the oracle-terraform-modules/oke module use.
+NODE_USER_DATA=$(base64 <<'CLOUDINIT' | tr -d '\n'
+#!/bin/bash
+/usr/libexec/oci-growfs -y || true
+curl --fail -H "Authorization: Bearer Oracle" -L0 http://169.254.169.254/opc/v2/instance/metadata/oke_init_script | base64 --decode >/var/run/oke-init.sh
+bash /var/run/oke-init.sh
+CLOUDINIT
+)
+
 # CPU node pool (boot volume >= 100 GB for the router image)
 oci ce node-pool create \
     --compartment-id "${OCI_COMPARTMENT_ID}" \
@@ -325,6 +342,7 @@ oci ce node-pool create \
     --node-shape-config '{"ocpus": 2, "memoryInGBs": 16}' \
     --node-image-id "${CPU_IMAGE_ID}" \
     --node-boot-volume-size-in-gbs 100 \
+    --node-metadata "{\"user_data\": \"${NODE_USER_DATA}\"}" \
     --size 1 \
     --placement-configs "[{\"availabilityDomain\": \"${AD}\", \"subnetId\": \"${WORKER_SUBNET_ID}\"}]" \
     --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
@@ -338,6 +356,7 @@ oci ce node-pool create \
     --node-shape "VM.GPU.A10.1" \
     --node-image-id "${GPU_IMAGE_ID}" \
     --node-boot-volume-size-in-gbs 200 \
+    --node-metadata "{\"user_data\": \"${NODE_USER_DATA}\"}" \
     --size 1 \
     --placement-configs "[{\"availabilityDomain\": \"${AD}\", \"subnetId\": \"${WORKER_SUBNET_ID}\"}]" \
     --initial-node-labels '[{"key": "app", "value": "gpu"}, {"key": "nvidia.com/gpu", "value": "true"}]' \
@@ -420,98 +439,11 @@ kubectl get nodes
 **Note:** Bastion sessions expire after the TTL (default 3 hours). Create a
 new session and restart the tunnel when access drops.
 
-## Step 7: Expand boot volume filesystems
+## Step 7: Verify node root filesystems
 
-OCI boot volumes provision only ~47 GB of usable root filesystem regardless
-of the requested size. Both nodes must be expanded.
-
-**Why this matters:** The vLLM engine image is ~10 GB, the router image is
-~10.5 GB, and the model weights are ~16 GB. Without expansion, pods get
-evicted for low ephemeral storage.
-
-For each node, run the following (use a unique pod name per node):
-
-```bash
-NODE_IP=<node-internal-ip>
-POD_NAME=expand-$(echo $NODE_IP | tr '.' '-')
-
-kubectl run ${POD_NAME} --restart=Never \
-  --image=busybox:latest \
-  --overrides="{
-    \"spec\":{
-      \"nodeName\":\"${NODE_IP}\",
-      \"tolerations\":[{\"operator\":\"Exists\"}],
-      \"containers\":[{
-        \"name\":\"expand\",
-        \"image\":\"busybox:latest\",
-        \"command\":[\"sleep\",\"600\"],
-        \"securityContext\":{\"privileged\":true},
-        \"volumeMounts\":[{\"name\":\"host\",\"mountPath\":\"/host\"}]
-      }],
-      \"volumes\":[{\"name\":\"host\",\"hostPath\":{\"path\":\"/\"}}]
-    }
-  }"
-
-kubectl wait --for=condition=Ready pod/${POD_NAME} --timeout=60s
-
-kubectl exec ${POD_NAME} -- chroot /host bash -c '
-  growpart /dev/sda 3
-  sleep 3
-  pvresize /dev/sda3
-  lvextend -l +100%FREE /dev/ocivolume/root
-  xfs_growfs /
-  df -h /
-'
-
-kubectl delete pod ${POD_NAME} --force
-```
-
-Repeat for each node. Expected results:
-
-- GPU node (200 GB boot volume): 36 GB → ~189 GB usable
-- CPU node (100 GB boot volume): 36 GB → ~89 GB usable
-
-Kubelet caches capacity at startup — in-place `systemctl restart kubelet`
-does not refresh it. See Step 7b.
-
-## Step 7b: Soft-reset each node so kubelet re-reads disk capacity
-
-Drain each node, soft-reset the VM, wait for Ready, uncordon:
-
-```bash
-for NODE_IP in <cpu-node-ip> <gpu-node-ip>; do
-    # Resolve the OCI instance OCID via the node's providerID, which OKE
-    # sets to oci://<instance-ocid>. (`oci ce node-pool list` does not
-    # populate the nested `nodes` array, so a list-based lookup returns
-    # null; `get` per pool also works but is noisier.)
-    INSTANCE_ID=$(kubectl get node "${NODE_IP}" \
-        -o jsonpath='{.spec.providerID}' | sed 's|^oci://||')
-
-    kubectl cordon "${NODE_IP}"
-    kubectl drain "${NODE_IP}" --ignore-daemonsets --delete-emptydir-data \
-        --force --grace-period=30 --timeout=120s || true
-
-    oci compute instance action \
-        --instance-id "${INSTANCE_ID}" --action SOFTRESET \
-        --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
-
-    # Wait for VM RUNNING, then for node Ready
-    until [[ "$(oci compute instance get --instance-id "${INSTANCE_ID}" \
-            --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
-            --query 'data."lifecycle-state"' --raw-output)" == "RUNNING" ]]; do
-        sleep 15
-    done
-    until kubectl get node "${NODE_IP}" \
-            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
-            | grep -q True; do
-        sleep 15
-    done
-
-    kubectl uncordon "${NODE_IP}"
-done
-```
-
-Verify kubelet picked up the expanded capacity before continuing:
+The Step 5 cloud-init grows each node's root filesystem to the full boot
+volume before kubelet starts, so no manual expansion or node reset is needed.
+Confirm kubelet sees the expanded capacity:
 
 ```bash
 for NODE in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
@@ -522,12 +454,9 @@ done
 ```
 
 Expected: CPU node ~`93476416Ki` (~89 GiB), GPU node ~`198056192Ki` (~189 GiB).
-If either still shows ~`37206272Ki`, rerun the soft-reset for that node.
-
-Note: a node can report `Ready` slightly before kubelet republishes the new
-`ephemeral-storage` capacity, so the value may briefly still read
-~`37206272Ki` right after uncordon. Re-check after ~60s before concluding a
-rerun is needed.
+If a node reports ~30-47 GiB instead, its pool was created without the
+cloud-init; see [Pods evicted for ephemeral storage](#pods-evicted-for-ephemeral-storage)
+in Troubleshooting for the manual recovery.
 
 ## Step 8: Create StorageClasses
 
@@ -676,32 +605,145 @@ Expected: `finish_reason` set to `tool_calls`.
 
 ### Pods evicted for ephemeral storage
 
-OCI boot volumes provision only ~47 GB of usable filesystem by default.
-Follow Step 7 to expand. If the boot volume itself is too small (default
-47 GB), resize it first via the OCI CLI, then rescan the block device before
-running `growpart`:
+Symptoms: `The node was low on resource: ephemeral-storage`, and
+`kubectl describe node <node-ip>` reports `ephemeral-storage:` of ~30-47 GiB
+even though the boot volume is 100-200 GB.
+
+Cause: the node pool was created without the Step 5 `--node-metadata`
+cloud-init, so `/usr/libexec/oci-growfs` never ran and the OKE image's default
+root partition was left in place.
+
+Fix: recreate the pool with the cloud-init (preferred; the replacement node
+comes up with the full size), or expand the existing nodes in place with the
+manual procedure below. If the boot volume itself is too small, resize it
+first via the OCI CLI, then rescan the block device before running
+`growpart`:
 
 ```bash
 echo 1 > /sys/class/block/sda/device/rescan
 ```
 
-### Engine pod evicted mid image pull despite Step 7 reporting success
+#### Manual recovery: expand the filesystems in place
+
+Use this only for nodes that were created without the Step 5 cloud-init.
+For each affected node, run the following (use a unique pod name per node):
+
+```bash
+NODE_IP=<node-internal-ip>
+POD_NAME=expand-$(echo $NODE_IP | tr '.' '-')
+
+kubectl run ${POD_NAME} --restart=Never \
+  --image=busybox:latest \
+  --overrides="{
+    \"spec\":{
+      \"nodeName\":\"${NODE_IP}\",
+      \"tolerations\":[{\"operator\":\"Exists\"}],
+      \"containers\":[{
+        \"name\":\"expand\",
+        \"image\":\"busybox:latest\",
+        \"command\":[\"sleep\",\"600\"],
+        \"securityContext\":{\"privileged\":true},
+        \"volumeMounts\":[{\"name\":\"host\",\"mountPath\":\"/host\"}]
+      }],
+      \"volumes\":[{\"name\":\"host\",\"hostPath\":{\"path\":\"/\"}}]
+    }
+  }"
+
+kubectl wait --for=condition=Ready pod/${POD_NAME} --timeout=60s
+
+kubectl exec ${POD_NAME} -- chroot /host bash -c '
+  growpart /dev/sda 3
+  sleep 3
+  pvresize /dev/sda3
+  lvextend -l +100%FREE /dev/ocivolume/root
+  xfs_growfs /
+  df -h /
+'
+
+kubectl delete pod ${POD_NAME} --force
+```
+
+Repeat for each node. Expected results:
+
+- GPU node (200 GB boot volume): 36 GB → ~189 GB usable
+- CPU node (100 GB boot volume): 36 GB → ~89 GB usable
+
+Kubelet caches capacity at startup — in-place `systemctl restart kubelet`
+does not refresh it. Continue with the soft-reset below.
+
+#### Manual recovery: soft-reset each node so kubelet re-reads disk capacity
+
+Drain each node, soft-reset the VM, wait for Ready, uncordon:
+
+```bash
+for NODE_IP in <cpu-node-ip> <gpu-node-ip>; do
+    # Resolve the OCI instance OCID via the node's providerID, which OKE
+    # sets to oci://<instance-ocid>. (`oci ce node-pool list` does not
+    # populate the nested `nodes` array, so a list-based lookup returns
+    # null; `get` per pool also works but is noisier.)
+    INSTANCE_ID=$(kubectl get node "${NODE_IP}" \
+        -o jsonpath='{.spec.providerID}' | sed 's|^oci://||')
+
+    kubectl cordon "${NODE_IP}"
+    kubectl drain "${NODE_IP}" --ignore-daemonsets --delete-emptydir-data \
+        --force --grace-period=30 --timeout=120s || true
+
+    oci compute instance action \
+        --instance-id "${INSTANCE_ID}" --action SOFTRESET \
+        --profile "${OCI_PROFILE}" --region "${OCI_REGION}"
+
+    # Wait for VM RUNNING, then for node Ready
+    until [[ "$(oci compute instance get --instance-id "${INSTANCE_ID}" \
+            --profile "${OCI_PROFILE}" --region "${OCI_REGION}" \
+            --query 'data."lifecycle-state"' --raw-output)" == "RUNNING" ]]; do
+        sleep 15
+    done
+    until kubectl get node "${NODE_IP}" \
+            -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' \
+            | grep -q True; do
+        sleep 15
+    done
+
+    kubectl uncordon "${NODE_IP}"
+done
+```
+
+Verify kubelet picked up the expanded capacity before continuing:
+
+```bash
+for NODE in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+    CAP=$(kubectl get node "${NODE}" \
+        -o jsonpath='{.status.capacity.ephemeral-storage}')
+    echo "${NODE}: ${CAP}"
+done
+```
+
+Expected: CPU node ~`93476416Ki` (~89 GiB), GPU node ~`198056192Ki` (~189 GiB).
+If either still shows ~`37206272Ki`, rerun the soft-reset for that node.
+
+Note: a node can report `Ready` slightly before kubelet republishes the new
+`ephemeral-storage` capacity, so the value may briefly still read
+~`37206272Ki` right after uncordon. Re-check after ~60s before concluding a
+rerun is needed.
+
+### Engine pod evicted mid image pull despite the manual expansion reporting success
 
 Symptoms: engine pod reaches `ContainerCreating`, then kubelet evicts it with
 `The node was low on resource: ephemeral-storage` (or `inodes`), and
 `FreeDiskSpaceFailed: ... but only found 0 bytes eligible to free`.
 
 Cause: kubelet's `Node.Capacity.ephemeral-storage` is cached at startup. Even
-after Step 7 expands the filesystem to ~189 GiB, kubelet continues to report
-the original ~37 GiB and triggers eviction thresholds against the stale value.
+after the manual expansion grows the filesystem to ~189 GiB, kubelet continues
+to report the original ~37 GiB and triggers eviction thresholds against the
+stale value.
 Confirm with:
 
 ```bash
 kubectl describe node <node-ip> | grep "ephemeral-storage:"
 ```
 
-If the value is ~`37206272Ki`, apply Step 7b (soft-reset the VM). An in-place
-`systemctl restart kubelet` does **not** refresh the capacity.
+If the value is ~`37206272Ki`, apply the soft-reset procedure above. An
+in-place `systemctl restart kubelet` does **not** refresh the capacity.
 
 ### SSH tunnel to OCI Bastion closes immediately after authentication
 
@@ -798,7 +840,9 @@ done
 ## Alternative: Terraform
 
 A Terraform sample using the `oracle-terraform-modules/oke/oci` module is
-available in [`terraform/`](./terraform/) for reference. Note that the
+available in [`terraform/`](./terraform/) for reference. The module's worker
+cloud-init already runs `oci-growfs`, so Terraform-created nodes get the full
+boot volume without the Step 5 `--node-metadata`. Note that the
 module's NSG configuration requires its built-in bastion compute host
 (`create_bastion = true`) for OCI Bastion port-forwarding to work. The
 manual CLI approach above is recommended for initial deployments.
