@@ -450,8 +450,6 @@ class WandbStatsHook:
 
     def _create_wrapper(self, original: Callable) -> Callable:
         """Create a wrapper function that logs stats after calling original."""
-        hook = self  # Capture self for the wrapper
-
         def wrapper(monitor_self: Any, input_len: int, ext_output_lens: list[int], task_metadata_per_pool: list) -> Any:
             # Call original _make_stats
             stats = original(monitor_self, input_len, ext_output_lens, task_metadata_per_pool)

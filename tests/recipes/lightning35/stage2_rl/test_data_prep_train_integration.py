@@ -31,7 +31,6 @@ import tempfile
 import types
 from pathlib import Path
 
-import pytest
 from omegaconf import OmegaConf
 
 from nemotron.kit import SplitJsonlDataArtifact
@@ -363,7 +362,6 @@ class TestTransformIntegration:
 
     def test_placeholder_record_with_mock_resolver(self):
         """Test placeholder record resolution with a mock resolver."""
-        from nemotron.data_prep.formats.transforms import resolve_hf_placeholders
         from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver, PlaceholderConfig
 
         # Create a mock dataset (simple dict-based mock)

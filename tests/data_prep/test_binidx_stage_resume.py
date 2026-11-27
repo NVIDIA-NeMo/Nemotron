@@ -30,8 +30,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import pytest
-
 from nemotron.data_prep.utils.filesystem import read_json
 
 

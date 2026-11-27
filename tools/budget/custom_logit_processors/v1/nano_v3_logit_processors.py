@@ -1,7 +1,6 @@
 # copied from here https://docs.vllm.ai/en/v0.10.1.1/examples/offline_inference/logits_processor.html
 
-from types import DynamicClassAttribute
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 import torch
 import json
@@ -13,9 +12,7 @@ from vllm.config import VllmConfig
 from vllm.v1.sample.logits_processor import (
     BatchUpdate,
     LogitsProcessor,
-    MoveDirectionality,
 )
-from vllm.v1.sample.logits_processor.builtin import process_dict_updates
 
 #import os
 #os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"

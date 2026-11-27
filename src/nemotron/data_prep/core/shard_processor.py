@@ -109,7 +109,6 @@ def process_binidx_shard_files_core(
     }
 
     files = [FileInfo(**f) for f in assignment["files"]]
-    input_file_paths = [f.path for f in files]
 
     # Handle empty assignment
     if not files:
@@ -362,8 +361,6 @@ def _process_parquet_file_core(
     Returns:
         Tuple of (rows_processed, tokenize_time_seconds)
     """
-    import pyarrow.compute as pc
-
     batch_texts: list[str] = []
     tokenize_batch_size = 1000
     hit_max_rows = False

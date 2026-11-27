@@ -56,8 +56,6 @@ class TestEnsureRawDirSkipsWhenStaged:
         (tmp_path / "mmpr_tiny.parquet").write_bytes(b"")
         # Trip-wire: if the helper tries to import snapshot_download we
         # know it didn't take the early-return path.
-        import nemotron.data_prep.recipes.rl_omni as mod
-
         original_import = __import__
 
         def hostile_import(name, *args, **kwargs):

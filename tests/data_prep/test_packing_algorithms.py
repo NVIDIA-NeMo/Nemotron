@@ -22,7 +22,6 @@ from nemotron.data_prep.packing.algorithms import (
     FirstFitShufflePacker,
     PackingAlgorithm,
     PackingMetrics,
-    SequencePacker,
     get_packer,
 )
 

@@ -275,7 +275,6 @@ def contract(text: str) -> dict:
         horizontal = 'horizontal' in plot_type or plot_type in {'funnel', 'tornado'}
         value_channel, dimension_channel = ('x', 'y') if horizontal else ('y', 'x')
         dimension_axis = resolve_axis(dimension_channel, raw_panel)
-        dimension_context = headers[0] + ' ' + dimension_axis[1]
         explicit_category = categorical_field(headers[0]) or categorical_field(dimension_axis[1])
         categorical_columns = {i for i, header in enumerate(headers) if categorical_field(header)}
         coordinate_columns = {0}
