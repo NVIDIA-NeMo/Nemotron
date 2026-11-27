@@ -14,9 +14,7 @@
 
 """Tests for row-level splitting in shard assignment."""
 
-import pytest
-
-from nemotron.data_prep.config import FileInfo, ShardAssignment
+from nemotron.data_prep.config import FileInfo
 from nemotron.data_prep.core.planning import create_size_balanced_assignments
 
 

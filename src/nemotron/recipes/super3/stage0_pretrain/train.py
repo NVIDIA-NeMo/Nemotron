@@ -66,7 +66,7 @@ from megatron.bridge.training.utils.omegaconf_utils import (
     create_omegaconf_dict_config,
     parse_hydra_overrides,
 )
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from nemotron.kit.recipe_loader import extract_recipe_config, import_recipe_function
 from nemo_runspec.artifacts import setup_artifact_tracking

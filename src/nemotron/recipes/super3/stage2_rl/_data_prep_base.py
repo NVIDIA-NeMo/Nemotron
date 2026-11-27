@@ -33,7 +33,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from nemotron.data_prep.recipes.rl_local import (
-    LocalSplitResult,
     run_resolve_and_split,
     split_local_jsonl,
 )

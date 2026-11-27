@@ -44,7 +44,6 @@ from loguru import logger
 from nemo_curator.backends.ray_data import RayDataExecutor
 from nemo_curator.core.client import RayClient
 from nemo_curator.pipeline import Pipeline
-from nemo_curator.stages.base import ProcessingStage
 from nemo_curator.stages.function_decorators import processing_stage
 from nemo_curator.stages.text.classifiers.fineweb_edu import (
     FineWebMixtralEduClassifier,

@@ -14,8 +14,6 @@
 
 """Tests for PackedSequenceBuilder."""
 
-import pytest
-
 from nemotron.data_prep.packing.builder import PackedSequenceBuilder
 
 

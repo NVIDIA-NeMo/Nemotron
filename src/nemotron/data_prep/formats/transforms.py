@@ -18,7 +18,10 @@ Provides factory functions and TypedDicts for common SFT/RL data formats.
 """
 
 from collections.abc import Callable
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from nemotron.data_prep.utils.hf_placeholder import HFPlaceholderResolver
 
 # =============================================================================
 # Type definitions for common output formats

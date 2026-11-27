@@ -26,13 +26,9 @@ Tests cover:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import time
-from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -409,7 +405,7 @@ class TestJsonlReceiptSchema:
 
         file_dicts = [{"path": str(jsonl_file), "local_path": str(jsonl_file), "size": 50}]
 
-        stats = process_jsonl_shard_core(
+        process_jsonl_shard_core(
             shard_index=0,
             files=file_dicts,
             output_dir=output_dir,
@@ -449,7 +445,7 @@ class TestJsonlReceiptSchema:
         jsonl_file = tmp_path / "input.jsonl"
         jsonl_file.write_text('{"text": "hello"}\n')
 
-        stats = process_jsonl_shard_core(
+        process_jsonl_shard_core(
             shard_index=0,
             files=[{"path": str(jsonl_file), "local_path": str(jsonl_file), "size": 20}],
             output_dir=output_dir,
@@ -483,7 +479,7 @@ class TestJsonlReceiptSchema:
         output_fs, _ = get_filesystem(output_dir)
 
         # Empty file list → empty shard
-        stats = process_jsonl_shard_core(
+        process_jsonl_shard_core(
             shard_index=0,
             files=[],
             output_dir=output_dir,

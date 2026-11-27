@@ -20,12 +20,9 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Self
+from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, Field, model_validator
-
-if TYPE_CHECKING:
-    from nemotron.kit.trackers import LineageTracker
 
 
 class TrackingInfo(BaseModel):

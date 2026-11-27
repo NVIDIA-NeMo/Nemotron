@@ -114,7 +114,7 @@ def convert_megatron_to_hf(
         print(f"HF checkpoint already exists at {output_path}, skipping conversion")
         return str(output_path)
 
-    print(f"Converting Megatron checkpoint to HuggingFace format...")
+    print("Converting Megatron checkpoint to HuggingFace format...")
     print(f"  Source: {megatron_path}")
     print(f"  HF model ID: {hf_model_id}")
     print(f"  Output: {output_path}")
@@ -152,7 +152,7 @@ def setup_initial_checkpoint(initial_checkpoint_path: str, checkpoint_dir: str) 
 
     if not initial_path.exists():
         print(f"ERROR: Initial checkpoint path does not exist: {initial_path}")
-        print(f"  Checking parent directory...")
+        print("  Checking parent directory...")
         parent = initial_path.parent
         if parent.exists():
             print(f"  Parent exists: {parent}")

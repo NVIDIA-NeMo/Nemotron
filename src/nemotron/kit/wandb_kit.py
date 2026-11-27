@@ -580,8 +580,8 @@ def _resolve_to_lustre_path(path: str) -> str:
             return nemo_run_dir
 
     print(
-        f"[WANDB] Could not resolve /nemo_run to Lustre path. "
-        f"Set NEMO_RUN_DIR environment variable to the actual Lustre path."
+        "[WANDB] Could not resolve /nemo_run to Lustre path. "
+        "Set NEMO_RUN_DIR environment variable to the actual Lustre path."
     )
     return resolved
 

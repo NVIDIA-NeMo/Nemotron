@@ -588,7 +588,7 @@ def _read_artifact_metadata(artifact_path: str) -> dict[str, Any]:
             logger.warning(f"Could not list artifact directory: {e}")
 
     if metadata_path.exists():
-        logger.info(f"metadata.json found, reading...")
+        logger.info("metadata.json found, reading...")
         return json.loads(metadata_path.read_text())
 
     logger.warning(f"metadata.json NOT found at {metadata_path}")

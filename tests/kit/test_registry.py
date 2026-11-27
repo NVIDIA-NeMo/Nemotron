@@ -403,7 +403,7 @@ class TestArtifactRegistryFsspec:
             source_file.write_bytes(b"model data")
 
             registry = ArtifactRegistry(backend="fsspec", root=root)
-            version = registry.publish("my-model", source_file)
+            registry.publish("my-model", source_file)
 
             resolved = registry.resolve("my-model")
             assert (resolved / "model.bin").read_bytes() == b"model data"

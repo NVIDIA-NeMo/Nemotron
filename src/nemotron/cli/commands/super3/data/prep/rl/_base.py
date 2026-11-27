@@ -36,7 +36,6 @@ from nemo_runspec.execution import (
     build_env_vars,
     create_slurm_executor,
     execute_cloud,
-    execute_cloud_ray,
     execute_local,
     get_executor_type,
     get_startup_commands,

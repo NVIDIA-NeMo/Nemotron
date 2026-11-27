@@ -28,22 +28,18 @@ Design: LLM-Native Recipe Architecture
 
 from __future__ import annotations
 
-import sys
-
 import typer
 from rich.console import Console
 
 from nemo_runspec.config import (
     build_job_config,
     clear_artifact_cache,
-    generate_job_dir,
     parse_config,
     register_resolvers_from_config,
 )
 from nemo_runspec.display import display_job_config, display_job_submission
 from nemo_runspec.env import parse_env
 from nemo_runspec.evaluator import (
-    collect_evaluator_images,
     ensure_wandb_host_env,
     get_non_task_args,
     inject_wandb_env_mappings,

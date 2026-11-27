@@ -17,7 +17,6 @@ import os
 import shutil
 import tempfile
 import time
-from pathlib import Path
 
 import numpy as np
 
@@ -46,7 +45,7 @@ def create_synthetic_spool(
     from fsspec.implementations.local import LocalFileSystem
     from nemotron.data_prep.packing.spool import SequenceSpoolPaths, SequenceSpoolWriter
 
-    print(f"\n=== Creating synthetic spool ===")
+    print("\n=== Creating synthetic spool ===")
     print(f"  Sequences: {num_sequences:,}")
     print(f"  Avg length: {avg_seq_length}")
     print(f"  Spool dir: {spool_dir}")
@@ -82,7 +81,7 @@ def create_synthetic_spool(
 
     log_memory("After writing sequences")
 
-    manifest = writer.finalize(extra_manifest={
+    writer.finalize(extra_manifest={
         "shard_id": "test_shard",
         "shard_index": 0,
         "pack_size": 4096,
@@ -113,7 +112,7 @@ def test_pack_from_spool(
     from fsspec.implementations.local import LocalFileSystem
     from nemotron.data_prep.chat_sft_shard_core import process_chat_sft_pack_from_spool_core
 
-    print(f"\n=== Testing pack from spool (using actual core function) ===")
+    print("\n=== Testing pack from spool (using actual core function) ===")
     log_memory("Start of pack test")
 
     fs = LocalFileSystem()
@@ -161,7 +160,7 @@ def test_ray_simulation(
     """Simulate the Ray pipeline behavior with memory logging."""
     import ray
 
-    print(f"\n=== Simulating Ray pipeline behavior ===")
+    print("\n=== Simulating Ray pipeline behavior ===")
     log_memory("Before ray.init()")
 
     # Initialize Ray locally
@@ -176,7 +175,7 @@ def test_ray_simulation(
 
     print("\n--- Running pack as Ray task ---")
     result_ref = pack_task.remote(spool_dir, output_dir, pack_size)
-    result = ray.get(result_ref)
+    _result = ray.get(result_ref)  # keep the result alive, as the pipeline would
     log_memory("After ray.get() of pack task")
 
     # Simulate what happens after pipeline
@@ -260,7 +259,7 @@ def main():
     print("=" * 60)
     print("ChatSFT Packing Memory Test")
     print("=" * 60)
-    print(f"Configuration:")
+    print("Configuration:")
     print(f"  Sequences: {args.num_sequences:,}")
     print(f"  Avg length: {args.avg_seq_length}")
     print(f"  Expected tokens: ~{args.num_sequences * args.avg_seq_length:,}")
